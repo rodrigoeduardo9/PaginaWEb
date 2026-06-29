@@ -2,6 +2,7 @@ import os
 import sqlite3
 import tempfile
 import json
+import gc
 from functools import wraps
 import torch
 import numpy as np
@@ -43,8 +44,21 @@ _model = None
 _acantosis_model = None
 
 
+def _free_model(name):
+    global _model, _acantosis_model
+    if name == 'retina' and _acantosis_model is not None:
+        del _acantosis_model
+        _acantosis_model = None
+        gc.collect()
+    elif name == 'skin' and _model is not None:
+        del _model
+        _model = None
+        gc.collect()
+
+
 def get_ai_model():
     global _model, _device
+    _free_model('retina')
     if _model is None:
         _device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         if os.path.exists(MODEL_PATH):
@@ -56,6 +70,7 @@ def get_ai_model():
 
 def get_acantosis_model():
     global _acantosis_model
+    _free_model('skin')
     if _acantosis_model is None and os.path.exists(ACANTOSIS_MODEL_PATH):
         try:
             _acantosis_model = keras.models.load_model(ACANTOSIS_MODEL_PATH)
@@ -479,10 +494,12 @@ def dashboard():
                     conn.commit()
                     cursor.close()
                     conn.close()
+                    gc.collect()
 
                     flash(f'Imagen analizada - Prediabetes: {ia_result["prediabetes"]:.1%}, Resistencia insulina: {ia_result["insulin_resistance"]:.1%}, Hipertensión: {ia_result["hypertension"]:.1%}', 'success')
                 except Exception as e:
                     flash(f'Error al analizar la imagen: {e}', 'error')
+                    gc.collect()
             else:
                 flash('Imagen cargada, pero no se encontró el modelo IA (model.pth).', 'info')
             return redirect(url_for('dashboard'))
@@ -530,8 +547,10 @@ def dashboard():
                     conn.close()
 
                     flash(f'Análisis de piel completado - {clase}: {confianza:.1%}', 'success')
+                    gc.collect()
                 except Exception as e:
                     flash(f'Error al analizar la imagen de piel: {e}', 'error')
+                    gc.collect()
             else:
                 flash('No se encontró el modelo de acantosis (modelo_acantosis.keras).', 'info')
             return redirect(url_for('dashboard'))
