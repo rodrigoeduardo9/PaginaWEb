@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero">
+    <h2>Bienvenido a Proyecto Diabetes AI</h2>
+    <p>Inicia sesión para capturar datos de salud y subir imágenes para análisis. El dashboard de resultados de IA se implementará en la siguiente fase.</p>
+    <div class="hero-actions">
+        <a class="button" href="{{ url_for('salud') }}">Formulario de salud</a>
+        <a class="button secondary" href="{{ url_for('upload') }}">Cargar imagen</a>
+    </div>
+</section>
+<section class="cards">
+    <article class="card">
+        <h3>Formulario de Salud</h3>
+        <p>Registra datos clínicos y recibe un diagnóstico de riesgo inmediato.</p>
+    </article>
+    <article class="card">
+        <h3>Cargar Imagen</h3>
+        <p>Sube una imagen para análisis futuro por IA. Esta funcionalidad ya prepara el flujo en la aplicación.</p>
+    </article>
+    <article class="card">
+        <h3>Dashboard Futuro</h3>
+        <p>Próximamente se mostrará el panel con los resultados de la IA y las métricas relevantes.</p>
+    </article>
+</section>
+{% endblock %}

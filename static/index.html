@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Model demo - Upload Image</title>
+  <style>body{font-family:Arial,Helvetica,sans-serif;max-width:800px;margin:40px auto}label{display:block;margin-top:12px}#preview{max-width:300px;margin-top:12px}</style>
+</head>
+<body>
+  <h2>Upload photo — get probabilities</h2>
+  <form id="form">
+    <label>Select image:
+      <input type="file" id="file" name="file" accept="image/*" />
+    </label>
+    <button type="submit">Send</button>
+  </form>
+  <img id="preview" src="" alt="preview" />
+  <pre id="result"></pre>
+
+  <script>
+    const form = document.getElementById('form');
+    const fileInput = document.getElementById('file');
+    const preview = document.getElementById('preview');
+    const result = document.getElementById('result');
+
+    fileInput.addEventListener('change', ()=>{
+      const f = fileInput.files[0];
+      if(!f) return; 
+      preview.src = URL.createObjectURL(f);
+    });
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const f = fileInput.files[0];
+      if(!f){ alert('Select an image'); return }
+      result.textContent = 'Uploading...';
+      const fd = new FormData(); fd.append('file', f);
+      try{
+        const resp = await fetch('/predict', {method:'POST', body: fd});
+        const data = await resp.json();
+        result.textContent = JSON.stringify(data, null, 2);
+      }catch(err){
+        result.textContent = 'Error: '+err;
+      }
+    });
+  </script>
+</body>
+</html>

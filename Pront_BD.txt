@@ -1,0 +1,28 @@
+Actúa como un Ingeniero de Datos Senior experto en MySQL. Necesito que generes el script SQL exclusivamente para el entorno MySQL (versión 8.0 o superior) para crear una base de datos relacional orientada a un sistema de registro de usuarios y seguimiento de salud mediante formularios.
+
+La base de datos debe estar normalizada en Tercera Forma Normal (3FN) y debe contemplar las siguientes dos tablas principales (ya que un usuario puede realizar múltiples registros en el formulario a lo largo del tiempo):
+
+1. Tabla: `usuarios` (Información de registro personal)
+   - id_usuario: INT AUTO_INCREMENT, Primary Key.
+   - nombre_completo: VARCHAR(100), NOT NULL.
+   - correo: VARCHAR(100), UNIQUE, NOT NULL.
+   - fecha_registro: TIMESTAMP DEFAULT CURRENT_TIMESTAMP.
+
+2. Tabla: `registros_salud` (Información del formulario médico)
+   - id_registro: INT AUTO_INCREMENT, Primary Key.
+   - id_usuario: INT, NOT NULL.
+   - fecha_formulario: TIMESTAMP DEFAULT CURRENT_TIMESTAMP.
+   - peso_kg: DECIMAL(5,2), NOT NULL.
+   - altura_cm: DECIMAL(5,2), NOT NULL.
+   - edad: INT, NOT NULL.
+   - nivel_glucosa: DECIMAL(5,2), NOT NULL (en mg/dL).
+   - ojos_rojos: ENUM('Sí', 'No'), NOT NULL.
+   - consumo_azucares: INT, NOT NULL.
+   - consumo_harinas: INT, NOT NULL.
+   - FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario) ON DELETE CASCADE.
+
+Requerimientos específicos para MySQL:
+- El IMC debe ser una columna calculada automáticamente usando la funcionalidad de MySQL "GENERATED ALWAYS AS". La fórmula debe ser: peso_kg / POWER((altura_cm / 100), 2). Define esta columna como VIRTUAL.
+- Añade restricciones de validación (CHECK constraints) en las columnas `consumo_azucares` y `consumo_harinas` para asegurar que MySQL solo acepte valores enteros del 1 al 5 (inclusive).
+- Añade índices (INDEX) explícitos en la tabla `usuarios` para la columna `correo`, y en la tabla `registros_salud` para la columna `id_usuario` para optimizar el rendimiento de las consultas.
+- Asegúrate de que el código incluya la creación de la base de datos (`CREATE DATABASE IF NOT EXISTS`) y la instrucción `USE` correspondiente. El script debe estar limpio y documentado con comentarios.

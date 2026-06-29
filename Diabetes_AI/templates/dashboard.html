@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero">
+    <h2>Bienvenido al Dashboard</h2>
+    <p>Aquí puedes completar tu formulario de salud, cargar imágenes para análisis y gestionar tu cuenta.</p>
+</section>
+<div class="dashboard-grid">
+    <section class="card">
+        <h3>Datos personales</h3>
+        <p><strong>Nombre:</strong> {{ current_user.nombre }}</p>
+        <p><strong>Correo:</strong> {{ current_user.correo }}</p>
+        <p><strong>Rol:</strong> Usuario</p>
+        <p>En esta sección puedes ver tu información personal y acceder a la configuración de cuenta.</p>
+    </section>
+    <section class="card">
+        <h3>Formulario de salud</h3>
+        <p>Registra tus datos clínicos para el análisis futuro.</p>
+        <form action="" method="post" class="form-card">
+            <input type="hidden" name="form_type" value="health">
+            <label for="peso_kg">Peso (kg)</label>
+            <input type="number" id="peso_kg" name="peso_kg" step="0.1" min="1" required>
+
+            <label for="altura_cm">Altura (cm)</label>
+            <input type="number" id="altura_cm" name="altura_cm" step="0.1" min="1" required>
+
+            <label for="edad">Edad</label>
+            <input type="number" id="edad" name="edad" min="1" required>
+
+            <label for="nivel_glucosa">Nivel de glucosa (mg/dL)</label>
+            <input type="number" id="nivel_glucosa" name="nivel_glucosa" step="0.1" min="1" required>
+
+            <label for="ojos_rojos">Ojos rojos</label>
+            <select id="ojos_rojos" name="ojos_rojos" required>
+                <option value="Sí">Sí</option>
+                <option value="No">No</option>
+            </select>
+
+            <label for="consumo_azucares">Consumo de azúcares (1-5)</label>
+            <input type="number" id="consumo_azucares" name="consumo_azucares" min="1" max="5" required>
+
+            <label for="consumo_harinas">Consumo de harinas (1-5)</label>
+            <input type="number" id="consumo_harinas" name="consumo_harinas" min="1" max="5" required>
+
+            <button type="submit" class="button">Guardar datos</button>
+        </form>
+    </section>
+    <section class="card">
+        <h3>Cargar imagen para análisis IA</h3>
+        <p>Sube una imagen de retina para que el modelo de IA analice riesgo de prediabetes, resistencia a la insulina e hipertensión.</p>
+        <form action="" method="post" enctype="multipart/form-data" class="form-card">
+            <input type="hidden" name="form_type" value="upload">
+            <label for="imagen">Selecciona imagen</label>
+            <input type="file" id="imagen" name="imagen" accept="image/png,image/jpeg,image/bmp" required>
+            <button type="submit" class="button secondary">Subir y analizar</button>
+        </form>
+    </section>
+    <section class="card" id="settings">
+        <h3>Configuración de cuenta</h3>
+        <p>Cambia tu contraseña y ajusta datos básicos de tu perfil.</p>
+        <form action="" method="post" class="form-card">
+            <input type="hidden" name="form_type" value="settings">
+            <label for="current_password">Contraseña actual</label>
+            <input type="password" id="current_password" name="current_password" required>
+
+            <label for="new_password">Nueva contraseña</label>
+            <input type="password" id="new_password" name="new_password" required>
+
+            <label for="confirm_password">Confirmar nueva contraseña</label>
+            <input type="password" id="confirm_password" name="confirm_password" required>
+
+            <button type="submit" class="button">Actualizar contraseña</button>
+        </form>
+    </section>
+</div>
+<section class="card">
+    <h3>Resultados de análisis IA</h3>
+    {% if analisis_list %}
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Imagen</th>
+                        <th>Prediabetes</th>
+                        <th>Resistencia Insulina</th>
+                        <th>Hipertensión</th>
+                        <th>Fecha</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for analisis in analisis_list %}
+                    <tr>
+                        <td>{{ analisis.filename }}</td>
+                        <td>{{ "%.1f"|format(analisis.prediabetes * 100) }}%</td>
+                        <td>{{ "%.1f"|format(analisis.insulin_resistance * 100) }}%</td>
+                        <td>{{ "%.1f"|format(analisis.hypertension * 100) }}%</td>
+                        <td>{{ analisis.fecha_analisis }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>Aún no hay análisis. Sube una imagen para que la IA la analice.</p>
+    {% endif %}
+</section>
+<a class="gear-button" href="#settings" title="Configuración">
+    ⚙
+</a>
+{% endblock %}

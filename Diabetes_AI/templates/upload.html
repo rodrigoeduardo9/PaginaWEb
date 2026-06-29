@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<section>
+    <h2>Cargar imagen para análisis</h2>
+    <p>Sube una imagen para que la IA la analice en la siguiente fase del proyecto.</p>
+    <form action="" method="post" enctype="multipart/form-data" class="form-card">
+        <label for="imagen">Seleccionar imagen</label>
+        <input type="file" id="imagen" name="imagen" accept="image/png,image/jpeg,image/bmp" required>
+        <button type="submit" class="button">Subir imagen</button>
+    </form>
+    {% if uploaded_filename %}
+    <div class="alert success">
+        <p>Archivo "{{ uploaded_filename }}" cargado correctamente.</p>
+        <p>El dashboard de resultados de IA estará disponible en una futura actualización.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

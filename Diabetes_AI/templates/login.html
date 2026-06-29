@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero">
+    <h2>Inicia sesión</h2>
+    <p>Accede a tu cuenta para entrar al dashboard de salud y análisis.</p>
+    <form action="" method="post" class="form-card">
+        <label for="correo">Correo electrónico</label>
+        <input type="email" id="correo" name="correo" required>
+
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" name="password" required>
+
+        <button type="submit" class="button">Iniciar sesión</button>
+    </form>
+    <div class="auth-footer">
+        <p>¿Eres nuevo? <a href="{{ url_for('registrar') }}">Regístrate aquí</a>.</p>
+    </div>
+</section>
+{% endblock %}

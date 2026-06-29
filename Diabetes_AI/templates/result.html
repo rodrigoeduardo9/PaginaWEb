@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<section>
+    <h2>Resultado de diagnóstico</h2>
+    <div class="result-card">
+        <p><strong>Usuario ID:</strong> {{ registro.id_usuario }}</p>
+        <p><strong>Peso:</strong> {{ registro.peso_kg }} kg</p>
+        <p><strong>Altura:</strong> {{ registro.altura_cm }} cm</p>
+        <p><strong>Edad:</strong> {{ registro.edad }} años</p>
+        <p><strong>Glucosa:</strong> {{ registro.nivel_glucosa }} mg/dL</p>
+        <p><strong>IMC estimado:</strong> {{ registro.imc }}</p>
+        <p><strong>Ojos rojos:</strong> {{ registro.ojos_rojos }}</p>
+        <p><strong>Consumo de azúcares:</strong> {{ registro.consumo_azucares }}</p>
+        <p><strong>Consumo de harinas:</strong> {{ registro.consumo_harinas }}</p>
+        <div class="alert">
+            <strong>Nivel de riesgo:</strong> {{ registro.riesgo }}
+        </div>
+        <a class="button" href="{{ url_for('salud') }}">Registrar otro</a>
+    </div>
+</section>
+{% endblock %}

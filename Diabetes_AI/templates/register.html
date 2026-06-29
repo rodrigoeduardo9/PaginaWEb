@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+<section>
+    <h2>Registro de usuario</h2>
+    <p>Ingrese nombre, correo y contraseña para crear una cuenta de usuario.</p>
+    <form action="" method="post" class="form-card">
+        <label for="nombre_completo">Nombre completo</label>
+        <input type="text" id="nombre_completo" name="nombre_completo" required>
+
+        <label for="correo">Correo electrónico</label>
+        <input type="email" id="correo" name="correo" required>
+
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" name="password" required>
+
+        <button type="submit" class="button">Guardar usuario</button>
+    </form>
+    <div class="auth-footer">
+        <p>¿Ya tienes cuenta? <a href="{{ url_for('login') }}">Inicia sesión aquí</a>.</p>
+    </div>
+</section>
+{% endblock %}
