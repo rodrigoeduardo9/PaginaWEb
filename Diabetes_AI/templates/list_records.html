@@ -1,39 +1,39 @@
 {% extends 'base.html' %}
 {% block content %}
 <section>
-    <h2>Registros de salud</h2>
-    <p>Consulta los datos de los formularios médicos guardados.</p>
-    <div class="table-card">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Usuario</th>
-                    <th>Fecha</th>
-                    <th>Peso</th>
-                    <th>Altura</th>
-                    <th>Glucosa</th>
-                    <th>IMC</th>
-                    <th>Azúcares</th>
-                    <th>Harinas</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for registro in registros %}
-                <tr>
-                    <td>{{ registro.id_registro }}</td>
-                    <td>{{ registro.nombre_completo }}</td>
-                    <td>{{ registro.fecha_formulario }}</td>
-                    <td>{{ registro.peso_kg }}</td>
-                    <td>{{ registro.altura_cm }}</td>
-                    <td>{{ registro.nivel_glucosa }}</td>
-                    <td>{{ registro.imc }}</td>
-                    <td>{{ registro.consumo_azucares }}</td>
-                    <td>{{ registro.consumo_harinas }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+  <h2>📋 Registros de salud</h2>
+  <p>Consulta los datos de los formularios médicos guardados.</p>
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Usuario</th>
+          <th>Fecha</th>
+          <th>Peso</th>
+          <th>Altura</th>
+          <th>Glucosa</th>
+          <th>IMC</th>
+          <th>Azúcares</th>
+          <th>Harinas</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for registro in registros %}
+        <tr>
+          <td>{{ registro.id_registro }}</td>
+          <td>{{ registro.nombre_completo }}</td>
+          <td>{{ registro.fecha_formulario }}</td>
+          <td>{{ registro.peso_kg }}</td>
+          <td>{{ registro.altura_cm }}</td>
+          <td>{{ registro.nivel_glucosa }}</td>
+          <td>{{ registro.imc }}</td>
+          <td>{{ registro.consumo_azucares }}</td>
+          <td>{{ registro.consumo_harinas }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
 {% endblock %}

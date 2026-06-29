@@ -1,44 +1,60 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }} - Proyecto Diabetes AI</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }} - Diabetes AI</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <header class="app-header">
-        <div class="container">
-            <h1>Proyecto Diabetes AI</h1>
-            <p>Interfaz amigable para seguimiento de salud y diagnóstico tempranamente.</p>
-            <nav>
-                {% if current_user %}
-                    <a href="{{ url_for('dashboard') }}">Dashboard</a>
-                    <span class="nav-user">Hola, {{ current_user.nombre }}</span>
-                    <a href="{{ url_for('logout') }}">Cerrar sesión</a>
-                {% else %}
-                    <a href="{{ url_for('login') }}">Iniciar sesión</a>
-                    <a href="{{ url_for('registrar') }}">Registrarse</a>
-                {% endif %}
-            </nav>
-        </div>
-    </header>
-    <main class="container">
-        <div class="flash-container">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert {{ category }}">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        </div>
-        {% block content %}{% endblock %}
-    </main>
-    <footer class="footer">
-        <div class="container">
-            <p>Proyecto Diabetes AI · Interfaz de usuario creada para la base de datos de salud.</p>
-        </div>
-    </footer>
+  <header class="app-header">
+    <div class="container header-inner">
+      <h1>🩺 Diabetes AI</h1>
+      <nav>
+        {% if current_user %}
+          <a href="{{ url_for('dashboard') }}">Dashboard</a>
+          <span class="nav-user">{{ current_user.nombre }}</span>
+          <a href="{{ url_for('logout') }}">Cerrar sesión</a>
+        {% else %}
+          <a href="{{ url_for('login') }}">Iniciar sesión</a>
+          <a href="{{ url_for('registrar') }}">Registrarse</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+  <main>
+    <div class="container">
+      <div class="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert {{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+  <footer class="footer">
+    <div class="container">
+      <p>Diabetes AI &mdash; <span>Evaluación Final Construcción de Software</span></p>
+    </div>
+  </footer>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const alerts = document.querySelectorAll('.alert');
+      alerts.forEach(function (alert) {
+        setTimeout(function () {
+          alert.classList.add('removing');
+          setTimeout(function () {
+            alert.remove();
+          }, 400);
+        }, 5000);
+      });
+    });
+  </script>
 </body>
 </html>

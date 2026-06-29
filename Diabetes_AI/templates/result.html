@@ -1,21 +1,55 @@
 {% extends 'base.html' %}
 {% block content %}
-<section>
-    <h2>Resultado de diagnóstico</h2>
-    <div class="result-card">
-        <p><strong>Usuario ID:</strong> {{ registro.id_usuario }}</p>
-        <p><strong>Peso:</strong> {{ registro.peso_kg }} kg</p>
-        <p><strong>Altura:</strong> {{ registro.altura_cm }} cm</p>
-        <p><strong>Edad:</strong> {{ registro.edad }} años</p>
-        <p><strong>Glucosa:</strong> {{ registro.nivel_glucosa }} mg/dL</p>
-        <p><strong>IMC estimado:</strong> {{ registro.imc }}</p>
-        <p><strong>Ojos rojos:</strong> {{ registro.ojos_rojos }}</p>
-        <p><strong>Consumo de azúcares:</strong> {{ registro.consumo_azucares }}</p>
-        <p><strong>Consumo de harinas:</strong> {{ registro.consumo_harinas }}</p>
-        <div class="alert">
-            <strong>Nivel de riesgo:</strong> {{ registro.riesgo }}
-        </div>
-        <a class="button" href="{{ url_for('salud') }}">Registrar otro</a>
+<section class="hero" style="max-width: 680px; margin: 0 auto;">
+  <h2>📊 Resultado de diagnóstico</h2>
+  <div class="result-card">
+    <div class="result-card-grid">
+      <div class="result-item">
+        <strong>Usuario ID</strong>
+        <span>{{ registro.id_usuario }}</span>
+      </div>
+      <div class="result-item">
+        <strong>Peso</strong>
+        <span>{{ registro.peso_kg }} kg</span>
+      </div>
+      <div class="result-item">
+        <strong>Altura</strong>
+        <span>{{ registro.altura_cm }} cm</span>
+      </div>
+      <div class="result-item">
+        <strong>Edad</strong>
+        <span>{{ registro.edad }} años</span>
+      </div>
+      <div class="result-item">
+        <strong>Glucosa</strong>
+        <span>{{ registro.nivel_glucosa }} mg/dL</span>
+      </div>
+      <div class="result-item">
+        <strong>IMC</strong>
+        <span>{{ registro.imc }}</span>
+      </div>
+      <div class="result-item">
+        <strong>Ojos rojos</strong>
+        <span>{{ registro.ojos_rojos }}</span>
+      </div>
+      <div class="result-item">
+        <strong>Consumo azúcares</strong>
+        <span>{{ registro.consumo_azucares }}/5</span>
+      </div>
+      <div class="result-item">
+        <strong>Consumo harinas</strong>
+        <span>{{ registro.consumo_harinas }}/5</span>
+      </div>
     </div>
+    <div style="text-align: center; margin-top: 1rem;">
+      {% set riesgo = registro.riesgo|lower %}
+      <span class="risk-badge {% if riesgo == 'alto' %}alto{% elif riesgo == 'moderado' %}moderado{% else %}bajo{% endif %}">
+        Nivel de riesgo: {{ registro.riesgo }}
+      </span>
+    </div>
+    <div style="text-align: center; margin-top: 1.25rem;">
+      <a class="button" href="{{ url_for('salud') }}">📋 Registrar otro</a>
+    </div>
+  </div>
 </section>
 {% endblock %}

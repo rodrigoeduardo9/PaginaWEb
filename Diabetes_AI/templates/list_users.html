@@ -1,29 +1,29 @@
 {% extends 'base.html' %}
 {% block content %}
 <section>
-    <h2>Usuarios registrados</h2>
-    <p>Revisa los usuarios que ya usan el sistema.</p>
-    <div class="table-card">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nombre</th>
-                    <th>Correo</th>
-                    <th>Fecha de registro</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for usuario in usuarios %}
-                <tr>
-                    <td>{{ usuario.id_usuario }}</td>
-                    <td>{{ usuario.nombre_completo }}</td>
-                    <td>{{ usuario.correo }}</td>
-                    <td>{{ usuario.fecha_registro }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+  <h2>👥 Usuarios registrados</h2>
+  <p>Revisa los usuarios que ya usan el sistema.</p>
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Correo</th>
+          <th>Fecha de registro</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for usuario in usuarios %}
+        <tr>
+          <td>{{ usuario.id_usuario }}</td>
+          <td>{{ usuario.nombre_completo }}</td>
+          <td>{{ usuario.correo }}</td>
+          <td>{{ usuario.fecha_registro }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
 {% endblock %}

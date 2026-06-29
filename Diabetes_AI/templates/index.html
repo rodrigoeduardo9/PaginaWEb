@@ -1,25 +1,25 @@
 {% extends 'base.html' %}
 {% block content %}
 <section class="hero">
-    <h2>Bienvenido a Proyecto Diabetes AI</h2>
-    <p>Inicia sesión para capturar datos de salud y subir imágenes para análisis. El dashboard de resultados de IA se implementará en la siguiente fase.</p>
-    <div class="hero-actions">
-        <a class="button" href="{{ url_for('salud') }}">Formulario de salud</a>
-        <a class="button secondary" href="{{ url_for('upload') }}">Cargar imagen</a>
-    </div>
+  <h2>Bienvenido a Diabetes AI</h2>
+  <p>Plataforma inteligente para el seguimiento de salud y diagnóstico temprano mediante análisis de imágenes con inteligencia artificial.</p>
+  <div class="hero-actions">
+    <a class="button" href="{{ url_for('salud') }}">📋 Formulario de salud</a>
+    <a class="button secondary" href="{{ url_for('upload') }}">📸 Cargar imagen</a>
+  </div>
 </section>
 <section class="cards">
-    <article class="card">
-        <h3>Formulario de Salud</h3>
-        <p>Registra datos clínicos y recibe un diagnóstico de riesgo inmediato.</p>
-    </article>
-    <article class="card">
-        <h3>Cargar Imagen</h3>
-        <p>Sube una imagen para análisis futuro por IA. Esta funcionalidad ya prepara el flujo en la aplicación.</p>
-    </article>
-    <article class="card">
-        <h3>Dashboard Futuro</h3>
-        <p>Próximamente se mostrará el panel con los resultados de la IA y las métricas relevantes.</p>
-    </article>
+  <article class="card">
+    <h3>📋 Formulario de Salud</h3>
+    <p>Registra tus datos clínicos y recibe un diagnóstico de riesgo inmediato basado en parámetros médicos.</p>
+  </article>
+  <article class="card">
+    <h3>🔬 Análisis con IA</h3>
+    <p>Sube imágenes de retina para que el modelo de inteligencia artificial detecte señales de enfermedades metabólicas.</p>
+  </article>
+  <article class="card">
+    <h3>📊 Dashboard</h3>
+    <p>Visualiza tus resultados, historial de análisis y métricas de salud en un panel interactivo.</p>
+  </article>
 </section>
 {% endblock %}

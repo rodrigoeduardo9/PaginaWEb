@@ -1,47 +1,47 @@
 {% extends 'base.html' %}
 {% block content %}
-<section>
-    <h2>Formulario de salud</h2>
-    <p>Captura los datos clínicos necesarios para el diagnóstico.</p>
-    <form action="" method="post" class="form-card">
-        {% if current_user %}
-            <p>Usuario: <strong>{{ current_user.nombre }}</strong></p>
-            <input type="hidden" name="id_usuario" value="{{ current_user.id }}">
-        {% else %}
-            <label for="id_usuario">Usuario</label>
-            <select id="id_usuario" name="id_usuario" required>
-                <option value="">Selecciona un usuario</option>
-                {% for usuario in usuarios %}
-                    <option value="{{ usuario.id_usuario }}">{{ usuario.nombre_completo }}</option>
-                {% endfor %}
-            </select>
-        {% endif %}
+<section class="hero" style="max-width: 600px; margin: 0 auto;">
+  <h2>📋 Formulario de salud</h2>
+  <p>Captura los datos clínicos necesarios para el diagnóstico.</p>
+  <form action="" method="post" class="form-card">
+    {% if current_user %}
+      <p style="margin-bottom:0.75rem;">Usuario: <strong>{{ current_user.nombre }}</strong></p>
+      <input type="hidden" name="id_usuario" value="{{ current_user.id }}">
+    {% else %}
+      <label for="id_usuario">Usuario</label>
+      <select id="id_usuario" name="id_usuario" required>
+        <option value="">Selecciona un usuario</option>
+        {% for usuario in usuarios %}
+          <option value="{{ usuario.id_usuario }}">{{ usuario.nombre_completo }}</option>
+        {% endfor %}
+      </select>
+    {% endif %}
 
-        <label for="peso_kg">Peso (kg)</label>
-        <input type="number" id="peso_kg" name="peso_kg" step="0.1" min="1" required>
+    <label for="peso_kg">Peso (kg)</label>
+    <input type="number" id="peso_kg" name="peso_kg" step="0.1" min="1" required>
 
-        <label for="altura_cm">Altura (cm)</label>
-        <input type="number" id="altura_cm" name="altura_cm" step="0.1" min="1" required>
+    <label for="altura_cm">Altura (cm)</label>
+    <input type="number" id="altura_cm" name="altura_cm" step="0.1" min="1" required>
 
-        <label for="edad">Edad</label>
-        <input type="number" id="edad" name="edad" min="1" required>
+    <label for="edad">Edad</label>
+    <input type="number" id="edad" name="edad" min="1" required>
 
-        <label for="nivel_glucosa">Nivel de glucosa (mg/dL)</label>
-        <input type="number" id="nivel_glucosa" name="nivel_glucosa" step="0.1" min="1" required>
+    <label for="nivel_glucosa">Nivel de glucosa (mg/dL)</label>
+    <input type="number" id="nivel_glucosa" name="nivel_glucosa" step="0.1" min="1" required>
 
-        <label for="ojos_rojos">Ojos rojos</label>
-        <select id="ojos_rojos" name="ojos_rojos" required>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
-        </select>
+    <label for="ojos_rojos">Ojos rojos</label>
+    <select id="ojos_rojos" name="ojos_rojos" required>
+      <option value="Sí">Sí</option>
+      <option value="No">No</option>
+    </select>
 
-        <label for="consumo_azucares">Consumo de azúcares (1-5)</label>
-        <input type="number" id="consumo_azucares" name="consumo_azucares" min="1" max="5" required>
+    <label for="consumo_azucares">Consumo de azúcares (1-5)</label>
+    <input type="number" id="consumo_azucares" name="consumo_azucares" min="1" max="5" required>
 
-        <label for="consumo_harinas">Consumo de harinas (1-5)</label>
-        <input type="number" id="consumo_harinas" name="consumo_harinas" min="1" max="5" required>
+    <label for="consumo_harinas">Consumo de harinas (1-5)</label>
+    <input type="number" id="consumo_harinas" name="consumo_harinas" min="1" max="5" required>
 
-        <button type="submit" class="button">Enviar datos</button>
-    </form>
+    <button type="submit" class="button" style="width:100%;justify-content:center;">💾 Enviar datos</button>
+  </form>
 </section>
 {% endblock %}
