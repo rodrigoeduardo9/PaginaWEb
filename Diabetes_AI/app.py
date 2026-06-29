@@ -218,6 +218,11 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+@app.route('/health')
+def health():
+    return {'status': 'ok', 'model_loaded': get_acantosis_model() is not None}, 200
+
+
 @app.route('/')
 def index():
     if get_current_user():
@@ -444,6 +449,14 @@ def dashboard():
         ultimo_recomendacion=ultimo_recomendacion,
         ultimo_analisis=ultimo_analisis,
     )
+
+
+# Preload model at startup to avoid timeout on first request
+try:
+    get_acantosis_model()
+    app.logger.info('Acantosis model loaded at startup')
+except Exception as e:
+    app.logger.error('Error preloading acantosis model: %s', e)
 
 
 if __name__ == '__main__':
