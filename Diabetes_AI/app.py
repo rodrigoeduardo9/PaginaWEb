@@ -1,18 +1,16 @@
 import os
 import sqlite3
-import tempfile
 import json
 import gc
 from functools import wraps
-import torch
 import numpy as np
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import mysql.connector
-from utils import get_model, preprocess_image
 
 os.environ['KERAS_BACKEND'] = 'torch'
+import torch
 import keras
 from PIL import Image
 
@@ -32,45 +30,14 @@ SQLITE_DB_PATH = os.path.join(os.path.dirname(__file__), 'bd_salud.sqlite3')
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp'}
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'model.pth')
-MODEL_LABELS = ["prediabetes", "insulin_resistance", "hypertension"]
-
 ACANTOSIS_MODEL_PATH = os.path.join(os.path.dirname(__file__), 'modelo_acantosis.keras')
 ACANTOSIS_CLASS_PATH = os.path.join(os.path.dirname(__file__), 'class_names.json')
 ACANTOSIS_CLASS_NAMES = json.load(open(ACANTOSIS_CLASS_PATH)) if os.path.exists(ACANTOSIS_CLASS_PATH) else []
-
-_device = None
-_model = None
 _acantosis_model = None
-
-
-def _free_model(name):
-    global _model, _acantosis_model
-    if name == 'retina' and _acantosis_model is not None:
-        del _acantosis_model
-        _acantosis_model = None
-        gc.collect()
-    elif name == 'skin' and _model is not None:
-        del _model
-        _model = None
-        gc.collect()
-
-
-def get_ai_model():
-    global _model, _device
-    _free_model('retina')
-    if _model is None:
-        _device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        if os.path.exists(MODEL_PATH):
-            _model = get_model(num_outputs=len(MODEL_LABELS), weights_path=MODEL_PATH, device=_device)
-        else:
-            _model = None
-    return _model
 
 
 def get_acantosis_model():
     global _acantosis_model
-    _free_model('skin')
     if _acantosis_model is None and os.path.exists(ACANTOSIS_MODEL_PATH):
         try:
             _acantosis_model = keras.models.load_model(ACANTOSIS_MODEL_PATH)
@@ -84,40 +51,34 @@ def preprocess_skin_image(image_path, target_size=(224, 224)):
     img = Image.open(image_path).convert('RGB')
     img = img.resize(target_size)
     x = np.array(img, dtype=np.float32) / 255.0
-    x = np.expand_dims(x, axis=0)
-    return x
-
-
-def preprocess_skin_image_torch(image_path, target_size=(224, 224)):
-    x = preprocess_skin_image(image_path, target_size)
-    return torch.from_numpy(x).float()
+    return torch.from_numpy(x).unsqueeze(0).float()
 
 
 def generar_recomendaciones_piel(clase, confianza):
     recs = {
         'Acanthosis_Nigricans': (
-            "🔴 ACANTOSIS NIGRICANS DETECTADA: Esta condición está fuertemente asociada con resistencia a la insulina. "
-            "Consulta a un endocrinólogo lo antes posible. Reduce el consumo de azúcares y carbohidratos refinados. "
-            "Realiza ejercicio físico regular. Un diagnóstico temprano puede prevenir el desarrollo de diabetes tipo 2."
+            "🔴 ACANTOSIS NIGRICANS DETECTADA: Esta condici\u00f3n est\u00e1 fuertemente asociada con resistencia a la insulina. "
+            "Consulta a un endocrin\u00f3logo lo antes posible. Reduce el consumo de az\u00facares y carbohidratos refinados. "
+            "Realiza ejercicio f\u00edsico regular. Un diagn\u00f3stico temprano puede prevenir el desarrollo de diabetes tipo 2."
         ),
         'CRP': (
-            "🟡 MARCADOR INFLAMATORIO (CRP) ELEVADO: La proteína C reactiva elevada indica inflamación sistémica. "
-            "Podría estar asociada a riesgo cardiovascular, diabetes o infecciones. "
-            "Se recomienda una dieta antiinflamatoria (omega-3, frutas, verduras), reducir el estrés y consultar a un médico general."
+            "\ud83d\udfe1 MARCADOR INFLAMATORIO (CRP) ELEVADO: La prote\u00edna C reactiva elevada indica inflamaci\u00f3n sist\u00e9mica. "
+            "Podr\u00eda estar asociada a riesgo cardiovascular, diabetes o infecciones. "
+            "Se recomienda una dieta antiinflamatoria (omega-3, frutas, verduras), reducir el estr\u00e9s y consultar a un m\u00e9dico general."
         ),
         'Healthy': (
-            "🟢 PIEL SALUDABLE: No se detectan anormalidades significativas. "
-            "Continúa con tus hábitos de cuidado personal, protección solar y chequeos médicos periódicos."
+            "\ud83d\udfe2 PIEL SALUDABLE: No se detectan anormalidades significativas. "
+            "Contin\u00faa con tus h\u00e1bitos de cuidado personal, protecci\u00f3n solar y chequeos m\u00e9dicos peri\u00f3dicos."
         ),
         'TFFD': (
-            "🟡 MARCADOR TFFD DETECTADO: Este hallazgo puede estar relacionado con factores metabólicos. "
-            "Se recomienda realizar un chequeo médico completo, incluyendo perfil glucémico y lipídico. "
-            "Mantén una dieta equilibrada y actividad física regular."
+            "\ud83d\udfe1 MARCADOR TFFD DETECTADO: Este hallazgo puede estar relacionado con factores metab\u00f3licos. "
+            "Se recomienda realizar un chequeo m\u00e9dico completo, incluyendo perfil gluc\u00e9mico y lip\u00eddico. "
+            "Mant\u00e9n una dieta equilibrada y actividad f\u00edsica regular."
         ),
     }
     nivel = 'Alto' if confianza >= 0.6 else 'Moderado' if confianza >= 0.3 else 'Bajo'
-    base = recs.get(clase, f"Resultado: {clase} con {confianza:.0%} de confianza. Consulta a tu médico.")
-    return f"{base}\n\n💡 Confianza del diagnóstico: {confianza:.1%} | Nivel de riesgo: {nivel}"
+    base = recs.get(clase, f"Resultado: {clase} con {confianza:.0%} de confianza. Consulta a tu m\u00e9dico.")
+    return f"{base}\n\n\u2728 Confianza del diagn\u00f3stico: {confianza:.1%} | Nivel de riesgo: {nivel}"
 
 
 def is_sqlite_connection(conn):
@@ -174,24 +135,6 @@ def init_sqlite_db():
         )'''
     )
     cursor.execute(
-        '''CREATE TABLE IF NOT EXISTS analisis_ia (
-            id_analisis INTEGER PRIMARY KEY AUTOINCREMENT,
-            id_usuario INTEGER NOT NULL,
-            filename TEXT NOT NULL,
-            prediabetes REAL,
-            insulin_resistance REAL,
-            hypertension REAL,
-            recomendaciones TEXT,
-            fecha_analisis TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario) ON DELETE CASCADE
-        )'''
-    )
-    cursor.execute("PRAGMA table_info(analisis_ia)")
-    cols = [row['name'] for row in cursor.fetchall()]
-    if 'recomendaciones' not in cols:
-        cursor.execute('ALTER TABLE analisis_ia ADD COLUMN recomendaciones TEXT')
-
-    cursor.execute(
         '''CREATE TABLE IF NOT EXISTS analisis_piel (
             id_analisis INTEGER PRIMARY KEY AUTOINCREMENT,
             id_usuario INTEGER NOT NULL,
@@ -227,7 +170,6 @@ def get_db_connection():
     if DB_TYPE == 'sqlite':
         init_sqlite_db()
         return sqlite_connection()
-
     try:
         conn = mysql.connector.connect(**DB_CONFIG)
         ensure_mysql_user_schema(conn)
@@ -254,7 +196,7 @@ def login_required(view):
     @wraps(view)
     def wrapped_view(*args, **kwargs):
         if 'user_id' not in session:
-            flash('Por favor inicia sesión para acceder a esta sección.', 'info')
+            flash('Por favor inicia sesi\u00f3n para acceder a esta secci\u00f3n.', 'info')
             return redirect(url_for('login'))
         return view(*args, **kwargs)
     return wrapped_view
@@ -267,48 +209,6 @@ def inject_user():
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-def generar_recomendaciones(prediabetes, insulin_resistance, hypertension):
-    recomendaciones = []
-
-    if prediabetes >= 0.6:
-        recomendaciones.append("🔴 ALTO RIESGO DE PREDIABETES: Consulta a un endocrinólogo urgentemente. Reduce drásticamente el consumo de azúcares refinados y carbohidratos simples. Realiza ayunos intermitentes bajo supervisión médica y haz ejercicios aeróbicos 45 min diarios.")
-    elif prediabetes >= 0.3:
-        recomendaciones.append("🟡 RIESGO MODERADO DE PREDIABETES: Limita el consumo de azúcares y harinas blancas. Incorpora más fibra vegetal y proteínas magras. Camina 30 minutos al día y monitorea tu glucosa en ayunas regularmente.")
-    else:
-        recomendaciones.append("🟢 BAJO RIESGO DE PREDIABETES: Mantén tus hábitos saludables. Sigue una dieta equilibrada rica en vegetales, granos enteros y proteínas magras. Realiza chequeos médicos anuales.")
-
-    if insulin_resistance >= 0.6:
-        recomendaciones.append("🔴 ALTA RESISTENCIA A LA INSULINA: Reduce carbohidratos a menos de 100g/día. Evita alimentos procesados y bebidas azucaradas. Incorpora ejercicio de fuerza 3 veces por semana. Considera suplementación con magnesio y omega-3 (consulta a tu médico).")
-    elif insulin_resistance >= 0.3:
-        recomendaciones.append("🟡 RESISTENCIA A LA INSULINA MODERADA: Reemplaza granos refinados por integrales. Aumenta consumo de ácidos grasos omega-3 (pescado, nueces, semillas de chía). Realiza ejercicio mixto (cardio + pesas) al menos 4 veces por semana.")
-    else:
-        recomendaciones.append("🟢 SENSIBILIDAD A LA INSULINA NORMAL: Continúa con tu estilo de vida activo. Mantén un peso saludable y evita el sedentarismo prolongado.")
-
-    if hypertension >= 0.6:
-        recomendaciones.append("🔴 ALTO RIESGO DE HIPERTENSIÓN: Reduce el sodio a menos de 1500mg/día. Elimina alimentos ultraprocesados, embutidos y enlatados. Incrementa consumo de potasio (plátano, espinaca, aguacate). Mide tu presión arterial diariamente y consulta a un cardiólogo.")
-    elif hypertension >= 0.3:
-        recomendaciones.append("🟡 RIESGO MODERADO DE HIPERTENSIÓN: Reduce el consumo de sal y alimentos procesados. Aumenta el potasio natural con frutas y verduras. Practica técnicas de relajación (meditación, respiración profunda) para reducir el estrés. Camina 30 min diarios.")
-    else:
-        recomendaciones.append("🟢 PRESIÓN ARTERIAL BAJO CONTROL: Sigue con tu dieta balanceada baja en sodio. Mantén la actividad física regular y chequeos periódicos.")
-
-    recomendaciones.append("💡 RECOMENDACIÓN GENERAL: Bebe al menos 2 litros de agua al día. Duerme 7-8 horas diarias. Evita el tabaco y el alcohol en exceso. Realiza ejercicio físico al menos 150 minutos por semana.")
-
-    return "\n\n".join(recomendaciones)
-
-
-def calcular_riesgo(registro):
-    nivel_glucosa = float(registro['nivel_glucosa'])
-    imc = float(registro['imc'])
-    azucar = int(registro['consumo_azucares'])
-    harinas = int(registro['consumo_harinas'])
-
-    if nivel_glucosa >= 140 or imc >= 30 or azucar >= 4 or harinas >= 4:
-        return 'Alto'
-    if nivel_glucosa >= 120 or imc >= 25 or azucar >= 3 or harinas >= 3:
-        return 'Moderado'
-    return 'Bajo'
 
 
 @app.route('/')
@@ -325,9 +225,8 @@ def registrar():
         correo = request.form['correo']
         password = request.form['password']
         if not password:
-            flash('Ingresa una contraseña.', 'error')
+            flash('Ingresa una contrase\u00f1a.', 'error')
             return render_template('register.html', title='Registro de usuario')
-
         hashed_password = generate_password_hash(password)
         conn = get_db_connection()
         cursor = conn.cursor() if is_sqlite_connection(conn) else conn.cursor()
@@ -340,15 +239,14 @@ def registrar():
             conn.commit()
         except (sqlite3.IntegrityError, mysql.connector.Error):
             conn.rollback()
-            flash('El correo ya está registrado, usa otro correo.', 'error')
+            flash('El correo ya est\u00e1 registrado, usa otro correo.', 'error')
             cursor.close()
             conn.close()
             return render_template('register.html', title='Registro de usuario')
         cursor.close()
         conn.close()
-        flash('Usuario registrado correctamente. Ahora inicia sesión.', 'success')
+        flash('Usuario registrado correctamente. Ahora inicia sesi\u00f3n.', 'success')
         return redirect(url_for('login'))
-
     return render_template('register.html', title='Registro de usuario')
 
 
@@ -367,29 +265,25 @@ def login():
         user = cursor.fetchone()
         cursor.close()
         conn.close()
-
         if not user:
-            flash('Correo o contraseña incorrectos.', 'error')
-            return render_template('login.html', title='Iniciar sesión')
-
+            flash('Correo o contrase\u00f1a incorrectos.', 'error')
+            return render_template('login.html', title='Iniciar sesi\u00f3n')
         stored_password = user['password']
         if not stored_password or not check_password_hash(stored_password, password):
-            flash('Correo o contraseña incorrectos.', 'error')
-            return render_template('login.html', title='Iniciar sesión')
-
+            flash('Correo o contrase\u00f1a incorrectos.', 'error')
+            return render_template('login.html', title='Iniciar sesi\u00f3n')
         session['user_id'] = user['id_usuario']
         session['user_name'] = user['nombre_completo']
         session['user_email'] = user['correo']
         flash(f'Bienvenido {user["nombre_completo"]}', 'success')
         return redirect(url_for('index'))
-
-    return render_template('login.html', title='Iniciar sesión')
+    return render_template('login.html', title='Iniciar sesi\u00f3n')
 
 
 @app.route('/logout')
 def logout():
     session.clear()
-    flash('Has cerrado sesión.', 'success')
+    flash('Has cerrado sesi\u00f3n.', 'success')
     return redirect(url_for('index'))
 
 
@@ -397,7 +291,6 @@ def logout():
 @login_required
 def dashboard():
     current_user = get_current_user()
-    uploaded_filename = None
 
     if request.method == 'POST':
         form_type = request.form.get('form_type')
@@ -416,108 +309,41 @@ def dashboard():
             registro['imc'] = round(float(registro['peso_kg']) / ((float(registro['altura_cm']) / 100) ** 2), 2)
             conn = get_db_connection()
             cursor = conn.cursor()
-            if is_sqlite_connection(conn):
-                cursor.execute(
-                    '''INSERT INTO registros_salud
-                    (id_usuario, peso_kg, altura_cm, edad, nivel_glucosa, ojos_rojos, consumo_azucares, consumo_harinas, imc)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (
-                        registro['id_usuario'],
-                        registro['peso_kg'],
-                        registro['altura_cm'],
-                        registro['edad'],
-                        registro['nivel_glucosa'],
-                        registro['ojos_rojos'],
-                        registro['consumo_azucares'],
-                        registro['consumo_harinas'],
-                        registro['imc'],
-                    )
-                )
-            else:
-                cursor.execute(
-                    '''INSERT INTO registros_salud
+            sql = '''INSERT INTO registros_salud
+                (id_usuario, peso_kg, altura_cm, edad, nivel_glucosa, ojos_rojos, consumo_azucares, consumo_harinas, imc)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'''
+            vals = (
+                registro['id_usuario'], registro['peso_kg'], registro['altura_cm'],
+                registro['edad'], registro['nivel_glucosa'], registro['ojos_rojos'],
+                registro['consumo_azucares'], registro['consumo_harinas'], registro['imc'],
+            )
+            if not is_sqlite_connection(conn):
+                sql = '''INSERT INTO registros_salud
                     (id_usuario, peso_kg, altura_cm, edad, nivel_glucosa, ojos_rojos, consumo_azucares, consumo_harinas)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)''',
-                    (
-                        registro['id_usuario'],
-                        registro['peso_kg'],
-                        registro['altura_cm'],
-                        registro['edad'],
-                        registro['nivel_glucosa'],
-                        registro['ojos_rojos'],
-                        registro['consumo_azucares'],
-                        registro['consumo_harinas'],
-                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'''
+                vals = (
+                    registro['id_usuario'], registro['peso_kg'], registro['altura_cm'],
+                    registro['edad'], registro['nivel_glucosa'], registro['ojos_rojos'],
+                    registro['consumo_azucares'], registro['consumo_harinas'],
                 )
+            cursor.execute(sql, vals)
             conn.commit()
             cursor.close()
             conn.close()
-            flash('Datos de salud guardados correctamente. El dashboard de IA estará disponible pronto.', 'success')
-            return redirect(url_for('dashboard'))
-
-        if form_type == 'upload':
-            if 'imagen' not in request.files:
-                flash('Selecciona una imagen para cargar.', 'error')
-                return redirect(url_for('dashboard'))
-
-            imagen = request.files['imagen']
-            if imagen.filename == '':
-                flash('Selecciona un archivo antes de enviar.', 'error')
-                return redirect(url_for('dashboard'))
-
-            if not allowed_file(imagen.filename):
-                flash('Solo se permiten imágenes JPG, JPEG, PNG o BMP.', 'error')
-                return redirect(url_for('dashboard'))
-
-            filename = secure_filename(imagen.filename)
-            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-            imagen.save(os.path.join(UPLOAD_FOLDER, filename))
-            uploaded_filename = filename
-
-            model = get_ai_model()
-            if model is not None:
-                try:
-                    x = preprocess_image(os.path.join(UPLOAD_FOLDER, filename)).to(_device)
-                    with torch.no_grad():
-                        logits = model(x)[0]
-                        probs = torch.sigmoid(logits).cpu().numpy().tolist()
-                    ia_result = dict(zip(MODEL_LABELS, probs))
-
-                    conn = get_db_connection()
-                    cursor = conn.cursor()
-                    placeholder = db_placeholder(conn)
-                    recomendaciones = generar_recomendaciones(ia_result['prediabetes'], ia_result['insulin_resistance'], ia_result['hypertension'])
-                    cursor.execute(
-                        f'INSERT INTO analisis_ia (id_usuario, filename, prediabetes, insulin_resistance, hypertension, recomendaciones) VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})',
-                        (current_user['id'], filename, ia_result['prediabetes'], ia_result['insulin_resistance'], ia_result['hypertension'], recomendaciones)
-                    )
-                    conn.commit()
-                    cursor.close()
-                    conn.close()
-                    gc.collect()
-
-                    flash(f'Imagen analizada - Prediabetes: {ia_result["prediabetes"]:.1%}, Resistencia insulina: {ia_result["insulin_resistance"]:.1%}, Hipertensión: {ia_result["hypertension"]:.1%}', 'success')
-                except Exception as e:
-                    flash(f'Error al analizar la imagen: {e}', 'error')
-                    gc.collect()
-            else:
-                flash('Imagen cargada, pero no se encontró el modelo IA (model.pth).', 'info')
+            flash('Datos de salud guardados correctamente.', 'success')
             return redirect(url_for('dashboard'))
 
         if form_type == 'upload_skin':
             if 'imagen_piel' not in request.files:
                 flash('Selecciona una imagen para cargar.', 'error')
                 return redirect(url_for('dashboard'))
-
             imagen = request.files['imagen_piel']
             if imagen.filename == '':
                 flash('Selecciona un archivo antes de enviar.', 'error')
                 return redirect(url_for('dashboard'))
-
             if not allowed_file(imagen.filename):
-                flash('Solo se permiten imágenes JPG, JPEG, PNG o BMP.', 'error')
+                flash('Solo se permiten im\u00e1genes JPG, JPEG, PNG o BMP.', 'error')
                 return redirect(url_for('dashboard'))
-
             filename = secure_filename(imagen.filename)
             os.makedirs(UPLOAD_FOLDER, exist_ok=True)
             imagen.save(os.path.join(UPLOAD_FOLDER, filename))
@@ -525,7 +351,7 @@ def dashboard():
             model = get_acantosis_model()
             if model is not None:
                 try:
-                    x = preprocess_skin_image_torch(os.path.join(UPLOAD_FOLDER, filename))
+                    x = preprocess_skin_image(os.path.join(UPLOAD_FOLDER, filename))
                     with torch.no_grad():
                         logits = model(x, training=False)
                         logits_t = logits if isinstance(logits, torch.Tensor) else torch.tensor(logits)
@@ -545,29 +371,25 @@ def dashboard():
                     conn.commit()
                     cursor.close()
                     conn.close()
-
-                    flash(f'Análisis de piel completado - {clase}: {confianza:.1%}', 'success')
+                    flash(f'An\u00e1lisis completado - {clase}: {confianza:.1%}', 'success')
                     gc.collect()
                 except Exception as e:
-                    flash(f'Error al analizar la imagen de piel: {e}', 'error')
+                    flash(f'Error al analizar la imagen: {e}', 'error')
                     gc.collect()
             else:
-                flash('No se encontró el modelo de acantosis (modelo_acantosis.keras).', 'info')
+                flash('No se encontr\u00f3 el modelo (modelo_acantosis.keras).', 'info')
             return redirect(url_for('dashboard'))
 
         if form_type == 'settings':
             current_password = request.form['current_password']
             new_password = request.form['new_password']
             confirm_password = request.form['confirm_password']
-
             if not current_password or not new_password or not confirm_password:
-                flash('Completa todos los campos de contraseña.', 'error')
+                flash('Completa todos los campos de contrase\u00f1a.', 'error')
                 return redirect(url_for('dashboard'))
-
             if new_password != confirm_password:
-                flash('La nueva contraseña y la confirmación no coinciden.', 'error')
+                flash('La nueva contrase\u00f1a y la confirmaci\u00f3n no coinciden.', 'error')
                 return redirect(url_for('dashboard'))
-
             conn = get_db_connection()
             cursor = conn.cursor(dictionary=True) if not is_sqlite_connection(conn) else conn.cursor()
             placeholder = db_placeholder(conn)
@@ -578,11 +400,10 @@ def dashboard():
             user = cursor.fetchone()
             stored_password = user['password']
             if not stored_password or not check_password_hash(stored_password, current_password):
-                flash('Contraseña actual incorrecta.', 'error')
+                flash('Contrase\u00f1a actual incorrecta.', 'error')
                 cursor.close()
                 conn.close()
                 return redirect(url_for('dashboard'))
-
             hashed_password = generate_password_hash(new_password)
             cursor.execute(
                 f'UPDATE usuarios SET password = {placeholder} WHERE id_usuario = {placeholder}',
@@ -591,22 +412,12 @@ def dashboard():
             conn.commit()
             cursor.close()
             conn.close()
-            flash('Contraseña actualizada correctamente.', 'success')
+            flash('Contrase\u00f1a actualizada correctamente.', 'success')
             return redirect(url_for('dashboard'))
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True) if not is_sqlite_connection(conn) else conn.cursor()
     placeholder = db_placeholder(conn)
-    cursor.execute(
-        f'SELECT * FROM analisis_ia WHERE id_usuario = {placeholder} ORDER BY fecha_analisis DESC LIMIT 5',
-        (current_user['id'],)
-    )
-    analisis_list = cursor.fetchall()
-    if is_sqlite_connection(conn):
-        analisis_list = [dict(row) for row in analisis_list]
-    ultimo_recomendacion = analisis_list[0].get('recomendaciones') if analisis_list else None
-    ultimo_analisis = analisis_list[0] if analisis_list else None
-
     cursor.execute(
         f'SELECT * FROM analisis_piel WHERE id_usuario = {placeholder} ORDER BY fecha_analisis DESC LIMIT 5',
         (current_user['id'],)
@@ -614,63 +425,18 @@ def dashboard():
     piel_list = cursor.fetchall()
     if is_sqlite_connection(conn):
         piel_list = [dict(row) for row in piel_list]
-    ultimo_recomendacion_piel = piel_list[0].get('recomendaciones') if piel_list else None
-    ultimo_analisis_piel = piel_list[0] if piel_list else None
+    ultimo_recomendacion = piel_list[0].get('recomendaciones') if piel_list else None
+    ultimo_analisis = piel_list[0] if piel_list else None
     cursor.close()
     conn.close()
 
-    return render_template('dashboard.html', title='Dashboard', current_user=current_user, analisis_list=analisis_list, ultimo_recomendacion=ultimo_recomendacion, ultimo_analisis=ultimo_analisis, piel_list=piel_list, ultimo_recomendacion_piel=ultimo_recomendacion_piel, ultimo_analisis_piel=ultimo_analisis_piel)
-
-
-@app.route('/upload')
-@login_required
-def upload():
-    return redirect(url_for('dashboard'))
-
-
-@app.route('/salud')
-@login_required
-def salud():
-    return redirect(url_for('dashboard'))
-
-
-@app.route('/usuarios')
-@login_required
-def usuarios():
-    return redirect(url_for('dashboard'))
-
-
-@app.route('/registros')
-@login_required
-def registros():
-    return redirect(url_for('dashboard'))
-
-
-@app.route('/api/predict', methods=['POST'])
-@login_required
-def api_predict():
-    if 'file' not in request.files:
-        return jsonify({'error': 'file missing'}), 400
-    f = request.files['file']
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
-        f.save(tmp.name)
-        tmp_path = tmp.name
-
-    model = get_ai_model()
-    if model is None:
-        os.unlink(tmp_path)
-        return jsonify({'error': 'model.pth not found', 'labels': MODEL_LABELS, 'probabilities': np.random.rand(len(MODEL_LABELS)).tolist(), 'note': 'Placeholder'}), 200
-
-    try:
-        x = preprocess_image(tmp_path).to(_device)
-        with torch.no_grad():
-            logits = model(x)[0]
-            probs = torch.sigmoid(logits).cpu().numpy().tolist()
-        os.unlink(tmp_path)
-        return jsonify({'labels': MODEL_LABELS, 'probabilities': probs, 'note': 'Model predictions'})
-    except Exception as e:
-        os.unlink(tmp_path)
-        return jsonify({'error': str(e)}), 500
+    return render_template(
+        'dashboard.html', title='Dashboard',
+        current_user=current_user,
+        piel_list=piel_list,
+        ultimo_recomendacion=ultimo_recomendacion,
+        ultimo_analisis=ultimo_analisis,
+    )
 
 
 if __name__ == '__main__':
