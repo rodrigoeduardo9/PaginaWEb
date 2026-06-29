@@ -136,16 +136,16 @@ def generar_recomendaciones_piel(clase, confianza):
             "Realiza ejercicio f\u00edsico regular. Un diagn\u00f3stico temprano puede prevenir el desarrollo de diabetes tipo 2."
         ),
         'CRP': (
-            "\ud83d\udfe1 MARCADOR INFLAMATORIO (CRP) ELEVADO: La prote\u00edna C reactiva elevada indica inflamaci\u00f3n sist\u00e9mica. "
+            "\U0001F7E1 MARCADOR INFLAMATORIO (CRP) ELEVADO: La prote\u00edna C reactiva elevada indica inflamaci\u00f3n sist\u00e9mica. "
             "Podr\u00eda estar asociada a riesgo cardiovascular, diabetes o infecciones. "
             "Se recomienda una dieta antiinflamatoria (omega-3, frutas, verduras), reducir el estr\u00e9s y consultar a un m\u00e9dico general."
         ),
         'Healthy': (
-            "\ud83d\udfe2 PIEL SALUDABLE: No se detectan anormalidades significativas. "
+            "\U0001F7E2 PIEL SALUDABLE: No se detectan anormalidades significativas. "
             "Contin\u00faa con tus h\u00e1bitos de cuidado personal, protecci\u00f3n solar y chequeos m\u00e9dicos peri\u00f3dicos."
         ),
         'TFFD': (
-            "\ud83d\udfe1 MARCADOR TFFD DETECTADO: Este hallazgo puede estar relacionado con factores metab\u00f3licos. "
+            "\U0001F7E1 MARCADOR TFFD DETECTADO: Este hallazgo puede estar relacionado con factores metab\u00f3licos. "
             "Se recomienda realizar un chequeo m\u00e9dico completo, incluyendo perfil gluc\u00e9mico y lip\u00eddico. "
             "Mant\u00e9n una dieta equilibrada y actividad f\u00edsica regular."
         ),
