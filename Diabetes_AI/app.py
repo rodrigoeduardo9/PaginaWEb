@@ -56,7 +56,7 @@ def preprocess_skin_image(image_path, target_size=(224, 224)):
     img = Image.open(image_path).convert('RGB')
     img = img.resize(target_size)
     x = np.array(img, dtype=np.float32) / 255.0
-    return torch.from_numpy(x).unsqueeze(0).float()
+    return torch.from_numpy(x).permute(2, 0, 1).unsqueeze(0).float()
 
 
 def generar_recomendacion_combinada(clase, confianza, salud=None):
