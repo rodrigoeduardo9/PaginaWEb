@@ -36,6 +36,20 @@
     <p><strong>Rol:</strong> Usuario</p>
   </section>
 
+  {% if ultima_salud %}
+  <section class="card">
+    <h3>📋 Últimos datos de salud</h3>
+    <p><strong>Peso:</strong> {{ ultima_salud.peso_kg }} kg</p>
+    <p><strong>Altura:</strong> {{ ultima_salud.altura_cm }} cm</p>
+    <p><strong>Edad:</strong> {{ ultima_salud.edad }} años</p>
+    <p><strong>Glucosa:</strong> {{ ultima_salud.nivel_glucosa }} mg/dL</p>
+    <p><strong>Ojos rojos:</strong> {{ ultima_salud.ojos_rojos }}</p>
+    <p><strong>Consumo azúcares:</strong> {{ ultima_salud.consumo_azucares }}/5</p>
+    <p><strong>Consumo harinas:</strong> {{ ultima_salud.consumo_harinas }}/5</p>
+    <p><strong>IMC:</strong> {{ "%.1f"|format(ultima_salud.peso_kg / ((ultima_salud.altura_cm / 100) ** 2)) }}</p>
+  </section>
+  {% endif %}
+
   <section class="card">
     <h3>📋 Formulario de salud</h3>
     <p>Registra tus datos clínicos para evaluación de riesgo.</p>
@@ -126,7 +140,7 @@
 {% if ultimo_recomendacion %}
 <section class="card">
   <h3>💊 Recomendaciones personalizadas</h3>
-  <p>Basadas en tu último análisis ({{ ultimo_analisis.filename }})</p>
+  <p>Basadas en tu último análisis{% if ultima_salud %} y datos de salud registrados{% endif %} ({{ ultimo_analisis.filename }})</p>
   <div class="recomendaciones-box">
     {% for rec in ultimo_recomendacion.split('\n\n') %}
       <div class="recomendacion-item">{{ rec }}</div>

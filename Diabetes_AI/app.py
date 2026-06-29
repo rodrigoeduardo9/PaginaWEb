@@ -59,6 +59,75 @@ def preprocess_skin_image(image_path, target_size=(224, 224)):
     return torch.from_numpy(x).unsqueeze(0).float()
 
 
+def generar_recomendacion_combinada(clase, confianza, salud=None):
+    rec_piel = generar_recomendaciones_piel(clase, confianza)
+    if not salud:
+        return rec_piel, None
+
+    salud_recs = []
+    riesgos = 0
+
+    peso = float(salud['peso_kg'])
+    altura = float(salud['altura_cm'])
+    imc = round(peso / ((altura / 100) ** 2), 2)
+    glucosa = float(salud['nivel_glucosa'])
+    edad = int(salud['edad'])
+    azucares = int(salud['consumo_azucares'])
+    harinas = int(salud['consumo_harinas'])
+    ojos_rojos = salud['ojos_rojos']
+
+    if imc >= 30:
+        salud_recs.append("🔴 Tu IMC indica obesidad. Esto aumenta el riesgo de resistencia a la insulina y diabetes.")
+        riesgos += 2
+    elif imc >= 25:
+        salud_recs.append("🟡 Tienes sobrepeso (IMC {:.1f}). Controla tu alimentaci\u00f3n y haz ejercicio.".format(imc))
+        riesgos += 1
+    else:
+        salud_recs.append("🟢 Tu IMC ({:.1f}) est\u00e1 en un rango saludable.".format(imc))
+
+    if glucosa >= 126:
+        salud_recs.append("🔴 Glucosa elevada ({:.0f} mg/dL). Podr\u00eda indicar diabetes. Consulta a un m\u00e9dico.".format(glucosa))
+        riesgos += 2
+    elif glucosa >= 100:
+        salud_recs.append("🟡 Glucosa ligeramente elevada ({:.0f} mg/dL). Podr\u00eda ser prediabetes.".format(glucosa))
+        riesgos += 1
+    else:
+        salud_recs.append("🟢 Nivel de glucosa normal ({:.0f} mg/dL).".format(glucosa))
+
+    if edad >= 45:
+        salud_recs.append("🔴 Edad ({}) a\u00f1os: factor de riesgo para diabetes tipo 2.".format(edad))
+        riesgos += 1
+    elif edad >= 35:
+        salud_recs.append("🟡 Edad ({}) a\u00f1os: riesgo moderado, haz chequeos peri\u00f3dicos.".format(edad))
+        riesgos += 0
+
+    if ojos_rojos.lower() == 's\u00ed':
+        salud_recs.append("🔴 Ojos rojos: posible signo de fatiga visual o problemas de presi\u00f3n.")
+        riesgos += 1
+
+    consumo_total = azucares + harinas
+    if consumo_total >= 8:
+        salud_recs.append("🔴 Alto consumo de az\u00facares y harinas ({}/10). Reduce su ingesta.".format(consumo_total))
+        riesgos += 1
+    elif consumo_total >= 5:
+        salud_recs.append("🟡 Consumo moderado de az\u00facares y harinas ({}/10).)".format(consumo_total))
+
+    if clase == 'Acanthosis_Nigricans':
+        riesgos += 2
+    elif clase == 'CRP' or clase == 'TFFD':
+        riesgos += 1
+
+    if riesgos >= 5:
+        salud_recs.append("\n🔴 RIESGO GLOBAL ALTO: Combinaci\u00f3n de m\u00faltiples factores. Busca atenci\u00f3n m\u00e9dica pronto.")
+    elif riesgos >= 3:
+        salud_recs.append("\n🟡 RIESGO GLOBAL MODERADO: Varios factores detectados. Toma medidas preventivas.")
+    else:
+        salud_recs.append("\n🟢 RIESGO GLOBAL BAJO: Contin\u00faa con tus h\u00e1bitos saludables.")
+
+    rec_combined = rec_piel + "\n\n---\n\n📋 **Datos de salud complementarios:**\n" + "\n".join(salud_recs)
+    return rec_combined, {'imc': imc, 'riesgo_global': riesgos}
+
+
 def generar_recomendaciones_piel(clase, confianza):
     recs = {
         'Acanthosis_Nigricans': (
@@ -368,14 +437,22 @@ def dashboard():
                     idx = int(np.argmax(probs))
                     clase = _acantosis_class_names[idx] if idx < len(_acantosis_class_names) else f'Class_{idx}'
                     confianza = float(probs[idx])
-                    rec_piel = generar_recomendaciones_piel(clase, confianza)
 
                     conn = get_db_connection()
-                    cursor = conn.cursor()
+                    cursor = conn.cursor(dictionary=True) if not is_sqlite_connection(conn) else conn.cursor()
                     placeholder = db_placeholder(conn)
                     cursor.execute(
+                        f'SELECT * FROM registros_salud WHERE id_usuario = {placeholder} ORDER BY fecha_formulario DESC LIMIT 1',
+                        (current_user['id'],)
+                    )
+                    ultima_salud = cursor.fetchone()
+                    if is_sqlite_connection(conn) and ultima_salud:
+                        ultima_salud = dict(ultima_salud)
+                    rec_final, salud_resumen = generar_recomendacion_combinada(clase, confianza, ultima_salud)
+
+                    cursor.execute(
                         f'INSERT INTO analisis_piel (id_usuario, filename, clase_detectada, confianza, recomendaciones) VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})',
-                        (current_user['id'], filename, clase, confianza, rec_piel)
+                        (current_user['id'], filename, clase, confianza, rec_final)
                     )
                     conn.commit()
                     cursor.close()
@@ -403,6 +480,15 @@ def dashboard():
         piel_list = [dict(row) for row in piel_list]
     ultimo_recomendacion = piel_list[0].get('recomendaciones') if piel_list else None
     ultimo_analisis = piel_list[0] if piel_list else None
+
+    cursor.execute(
+        f'SELECT * FROM registros_salud WHERE id_usuario = {placeholder} ORDER BY fecha_formulario DESC LIMIT 1',
+        (current_user['id'],)
+    )
+    ultima_salud = cursor.fetchone()
+    if is_sqlite_connection(conn) and ultima_salud:
+        ultima_salud = dict(ultima_salud)
+
     cursor.close()
     conn.close()
 
@@ -412,6 +498,7 @@ def dashboard():
         piel_list=piel_list,
         ultimo_recomendacion=ultimo_recomendacion,
         ultimo_analisis=ultimo_analisis,
+        ultima_salud=ultima_salud,
     )
 
 
