@@ -8,7 +8,7 @@
 <div class="stats-grid">
   <div class="stat-card">
     <div class="stat-icon">📊</div>
-    <div class="stat-value">{{ analisis_list|length }}</div>
+    <div class="stat-value">{{ analisis_list|length + piel_list|length }}</div>
     <div class="stat-label">Análisis realizados</div>
   </div>
   <div class="stat-card">
@@ -70,13 +70,24 @@
   </section>
 
   <section class="card">
-    <h3>🔬 Análisis con IA</h3>
+    <h3>🔬 Análisis de retina</h3>
     <p>Sube una imagen de retina para detectar riesgo de prediabetes, resistencia a la insulina e hipertensión.</p>
     <form action="" method="post" enctype="multipart/form-data" class="form-card">
       <input type="hidden" name="form_type" value="upload">
-      <label for="imagen">Seleccionar imagen</label>
+      <label for="imagen">Seleccionar imagen de retina</label>
       <input type="file" id="imagen" name="imagen" accept="image/png,image/jpeg,image/bmp" required>
-      <button type="submit" class="button secondary">🚀 Subir y analizar</button>
+      <button type="submit" class="button secondary">🚀 Analizar retina</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h3>🧴 Análisis de piel (Acantosis)</h3>
+    <p>Sube una foto de piel para detectar Acantosis Nigricans, marcadores inflamatorios y más.</p>
+    <form action="" method="post" enctype="multipart/form-data" class="form-card">
+      <input type="hidden" name="form_type" value="upload_skin">
+      <label for="imagen_piel">Seleccionar imagen de piel</label>
+      <input type="file" id="imagen_piel" name="imagen_piel" accept="image/png,image/jpeg,image/bmp" required>
+      <button type="submit" class="button secondary">🧴 Analizar piel</button>
     </form>
   </section>
 
@@ -161,9 +172,68 @@
   {% endif %}
 </section>
 
+<section class="card">
+  <h3>🧴 Resultados de análisis de piel</h3>
+  {% if piel_list %}
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Imagen</th>
+            <th>Clase detectada</th>
+            <th>Confianza</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for analisis in piel_list %}
+          <tr>
+            <td>{{ analisis.filename }}</td>
+            <td>
+              <span class="risk-badge
+                {%- if 'Acanthosis' in analisis.clase_detectada %} alto
+                {%- elif 'Healthy' in analisis.clase_detectada %} bajo
+                {%- else %} moderado{% endif %}">
+                {{ analisis.clase_detectada }}
+              </span>
+            </td>
+            <td>
+              {% set c = analisis.confianza * 100 %}
+              <div class="progress-bar-container">
+                <div class="progress-label">
+                  <span>{{ "%.1f"|format(c) }}%</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill {% if c < 50 %}low{% elif c < 75 %}moderate{% else %}high{% endif %}" style="width: {{ c }}%"></div>
+                </div>
+              </div>
+            </td>
+            <td>{{ analisis.fecha_analisis }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p>Aún no hay análisis de piel. Sube una foto para que la IA la analice.</p>
+  {% endif %}
+</section>
+
+{% if ultimo_recomendacion_piel %}
+<section class="card">
+  <h3>💊 Recomendaciones - Análisis de piel</h3>
+  <p>Basadas en tu último análisis ({{ ultimo_analisis_piel.filename }})</p>
+  <div class="recomendaciones-box">
+    {% for rec in ultimo_recomendacion_piel.split('\n\n') %}
+      <div class="recomendacion-item">{{ rec }}</div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 {% if ultimo_recomendacion %}
 <section class="card">
-  <h3>💊 Recomendaciones personalizadas</h3>
+  <h3>💊 Recomendaciones - Análisis de retina</h3>
   <p>Basadas en tu último análisis ({{ ultimo_analisis.filename }})</p>
   <div class="recomendaciones-box">
     {% for rec in ultimo_recomendacion.split('\n\n') %}

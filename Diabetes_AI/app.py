@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import tempfile
+import json
 from functools import wraps
 import torch
 import numpy as np
@@ -9,6 +10,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import mysql.connector
 from utils import get_model, preprocess_image
+
+os.environ['KERAS_BACKEND'] = 'torch'
+import keras
+from PIL import Image
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'proyecto_diabetes_ai_secret')
@@ -28,8 +33,14 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp'}
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), 'model.pth')
 MODEL_LABELS = ["prediabetes", "insulin_resistance", "hypertension"]
+
+ACANTOSIS_MODEL_PATH = os.path.join(os.path.dirname(__file__), 'modelo_acantosis.keras')
+ACANTOSIS_CLASS_PATH = os.path.join(os.path.dirname(__file__), 'class_names.json')
+ACANTOSIS_CLASS_NAMES = json.load(open(ACANTOSIS_CLASS_PATH)) if os.path.exists(ACANTOSIS_CLASS_PATH) else []
+
 _device = None
 _model = None
+_acantosis_model = None
 
 
 def get_ai_model():
@@ -41,6 +52,57 @@ def get_ai_model():
         else:
             _model = None
     return _model
+
+
+def get_acantosis_model():
+    global _acantosis_model
+    if _acantosis_model is None and os.path.exists(ACANTOSIS_MODEL_PATH):
+        try:
+            _acantosis_model = keras.models.load_model(ACANTOSIS_MODEL_PATH)
+        except Exception as e:
+            print('Error loading acantosis model:', e)
+            _acantosis_model = None
+    return _acantosis_model
+
+
+def preprocess_skin_image(image_path, target_size=(224, 224)):
+    img = Image.open(image_path).convert('RGB')
+    img = img.resize(target_size)
+    x = np.array(img, dtype=np.float32) / 255.0
+    x = np.expand_dims(x, axis=0)
+    return x
+
+
+def preprocess_skin_image_torch(image_path, target_size=(224, 224)):
+    x = preprocess_skin_image(image_path, target_size)
+    return torch.from_numpy(x).float()
+
+
+def generar_recomendaciones_piel(clase, confianza):
+    recs = {
+        'Acanthosis_Nigricans': (
+            "🔴 ACANTOSIS NIGRICANS DETECTADA: Esta condición está fuertemente asociada con resistencia a la insulina. "
+            "Consulta a un endocrinólogo lo antes posible. Reduce el consumo de azúcares y carbohidratos refinados. "
+            "Realiza ejercicio físico regular. Un diagnóstico temprano puede prevenir el desarrollo de diabetes tipo 2."
+        ),
+        'CRP': (
+            "🟡 MARCADOR INFLAMATORIO (CRP) ELEVADO: La proteína C reactiva elevada indica inflamación sistémica. "
+            "Podría estar asociada a riesgo cardiovascular, diabetes o infecciones. "
+            "Se recomienda una dieta antiinflamatoria (omega-3, frutas, verduras), reducir el estrés y consultar a un médico general."
+        ),
+        'Healthy': (
+            "🟢 PIEL SALUDABLE: No se detectan anormalidades significativas. "
+            "Continúa con tus hábitos de cuidado personal, protección solar y chequeos médicos periódicos."
+        ),
+        'TFFD': (
+            "🟡 MARCADOR TFFD DETECTADO: Este hallazgo puede estar relacionado con factores metabólicos. "
+            "Se recomienda realizar un chequeo médico completo, incluyendo perfil glucémico y lipídico. "
+            "Mantén una dieta equilibrada y actividad física regular."
+        ),
+    }
+    nivel = 'Alto' if confianza >= 0.6 else 'Moderado' if confianza >= 0.3 else 'Bajo'
+    base = recs.get(clase, f"Resultado: {clase} con {confianza:.0%} de confianza. Consulta a tu médico.")
+    return f"{base}\n\n💡 Confianza del diagnóstico: {confianza:.1%} | Nivel de riesgo: {nivel}"
 
 
 def is_sqlite_connection(conn):
@@ -113,6 +175,19 @@ def init_sqlite_db():
     cols = [row['name'] for row in cursor.fetchall()]
     if 'recomendaciones' not in cols:
         cursor.execute('ALTER TABLE analisis_ia ADD COLUMN recomendaciones TEXT')
+
+    cursor.execute(
+        '''CREATE TABLE IF NOT EXISTS analisis_piel (
+            id_analisis INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_usuario INTEGER NOT NULL,
+            filename TEXT NOT NULL,
+            clase_detectada TEXT,
+            confianza REAL,
+            recomendaciones TEXT,
+            fecha_analisis TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario) ON DELETE CASCADE
+        )'''
+    )
     conn.commit()
     ensure_sqlite_user_schema(conn)
     conn.close()
@@ -412,6 +487,55 @@ def dashboard():
                 flash('Imagen cargada, pero no se encontró el modelo IA (model.pth).', 'info')
             return redirect(url_for('dashboard'))
 
+        if form_type == 'upload_skin':
+            if 'imagen_piel' not in request.files:
+                flash('Selecciona una imagen para cargar.', 'error')
+                return redirect(url_for('dashboard'))
+
+            imagen = request.files['imagen_piel']
+            if imagen.filename == '':
+                flash('Selecciona un archivo antes de enviar.', 'error')
+                return redirect(url_for('dashboard'))
+
+            if not allowed_file(imagen.filename):
+                flash('Solo se permiten imágenes JPG, JPEG, PNG o BMP.', 'error')
+                return redirect(url_for('dashboard'))
+
+            filename = secure_filename(imagen.filename)
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            imagen.save(os.path.join(UPLOAD_FOLDER, filename))
+
+            model = get_acantosis_model()
+            if model is not None:
+                try:
+                    x = preprocess_skin_image_torch(os.path.join(UPLOAD_FOLDER, filename))
+                    with torch.no_grad():
+                        logits = model(x, training=False)
+                        logits_t = logits if isinstance(logits, torch.Tensor) else torch.tensor(logits)
+                        probs = torch.softmax(logits_t, dim=1).numpy()[0]
+                    idx = int(np.argmax(probs))
+                    clase = ACANTOSIS_CLASS_NAMES[idx] if idx < len(ACANTOSIS_CLASS_NAMES) else f'Class_{idx}'
+                    confianza = float(probs[idx])
+                    rec_piel = generar_recomendaciones_piel(clase, confianza)
+
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    placeholder = db_placeholder(conn)
+                    cursor.execute(
+                        f'INSERT INTO analisis_piel (id_usuario, filename, clase_detectada, confianza, recomendaciones) VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})',
+                        (current_user['id'], filename, clase, confianza, rec_piel)
+                    )
+                    conn.commit()
+                    cursor.close()
+                    conn.close()
+
+                    flash(f'Análisis de piel completado - {clase}: {confianza:.1%}', 'success')
+                except Exception as e:
+                    flash(f'Error al analizar la imagen de piel: {e}', 'error')
+            else:
+                flash('No se encontró el modelo de acantosis (modelo_acantosis.keras).', 'info')
+            return redirect(url_for('dashboard'))
+
         if form_type == 'settings':
             current_password = request.form['current_password']
             new_password = request.form['new_password']
@@ -463,10 +587,20 @@ def dashboard():
         analisis_list = [dict(row) for row in analisis_list]
     ultimo_recomendacion = analisis_list[0].get('recomendaciones') if analisis_list else None
     ultimo_analisis = analisis_list[0] if analisis_list else None
+
+    cursor.execute(
+        f'SELECT * FROM analisis_piel WHERE id_usuario = {placeholder} ORDER BY fecha_analisis DESC LIMIT 5',
+        (current_user['id'],)
+    )
+    piel_list = cursor.fetchall()
+    if is_sqlite_connection(conn):
+        piel_list = [dict(row) for row in piel_list]
+    ultimo_recomendacion_piel = piel_list[0].get('recomendaciones') if piel_list else None
+    ultimo_analisis_piel = piel_list[0] if piel_list else None
     cursor.close()
     conn.close()
 
-    return render_template('dashboard.html', title='Dashboard', current_user=current_user, analisis_list=analisis_list, ultimo_recomendacion=ultimo_recomendacion, ultimo_analisis=ultimo_analisis)
+    return render_template('dashboard.html', title='Dashboard', current_user=current_user, analisis_list=analisis_list, ultimo_recomendacion=ultimo_recomendacion, ultimo_analisis=ultimo_analisis, piel_list=piel_list, ultimo_recomendacion_piel=ultimo_recomendacion_piel, ultimo_analisis_piel=ultimo_analisis_piel)
 
 
 @app.route('/upload')
