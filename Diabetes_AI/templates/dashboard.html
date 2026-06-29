@@ -161,5 +161,17 @@
   {% endif %}
 </section>
 
+{% if ultimo_recomendacion %}
+<section class="card">
+  <h3>💊 Recomendaciones personalizadas</h3>
+  <p>Basadas en tu último análisis ({{ ultimo_analisis.filename }})</p>
+  <div class="recomendaciones-box">
+    {% for rec in ultimo_recomendacion.split('\n\n') %}
+      <div class="recomendacion-item">{{ rec }}</div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <a class="gear-button" href="#settings" title="Configuración">⚙</a>
 {% endblock %}

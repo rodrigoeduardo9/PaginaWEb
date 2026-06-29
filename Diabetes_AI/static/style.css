@@ -615,6 +615,30 @@ main {
   color: var(--primary-light);
 }
 
+/* ─── RECOMENDACIONES ─── */
+.recomendaciones-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.recomendacion-item {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.25rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  transition: var(--transition);
+}
+
+.recomendacion-item:hover {
+  background: #f1f5f9;
+  border-color: var(--primary-light);
+  transform: translateX(4px);
+}
+
 /* ─── RESPONSIVE ─── */
 @media (max-width: 768px) {
   .header-inner {

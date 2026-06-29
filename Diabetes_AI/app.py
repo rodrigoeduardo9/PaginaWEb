@@ -104,10 +104,15 @@ def init_sqlite_db():
             prediabetes REAL,
             insulin_resistance REAL,
             hypertension REAL,
+            recomendaciones TEXT,
             fecha_analisis TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario) ON DELETE CASCADE
         )'''
     )
+    cursor.execute("PRAGMA table_info(analisis_ia)")
+    cols = [row['name'] for row in cursor.fetchall()]
+    if 'recomendaciones' not in cols:
+        cursor.execute('ALTER TABLE analisis_ia ADD COLUMN recomendaciones TEXT')
     conn.commit()
     ensure_sqlite_user_schema(conn)
     conn.close()
@@ -172,6 +177,35 @@ def inject_user():
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def generar_recomendaciones(prediabetes, insulin_resistance, hypertension):
+    recomendaciones = []
+
+    if prediabetes >= 0.6:
+        recomendaciones.append("🔴 ALTO RIESGO DE PREDIABETES: Consulta a un endocrinólogo urgentemente. Reduce drásticamente el consumo de azúcares refinados y carbohidratos simples. Realiza ayunos intermitentes bajo supervisión médica y haz ejercicios aeróbicos 45 min diarios.")
+    elif prediabetes >= 0.3:
+        recomendaciones.append("🟡 RIESGO MODERADO DE PREDIABETES: Limita el consumo de azúcares y harinas blancas. Incorpora más fibra vegetal y proteínas magras. Camina 30 minutos al día y monitorea tu glucosa en ayunas regularmente.")
+    else:
+        recomendaciones.append("🟢 BAJO RIESGO DE PREDIABETES: Mantén tus hábitos saludables. Sigue una dieta equilibrada rica en vegetales, granos enteros y proteínas magras. Realiza chequeos médicos anuales.")
+
+    if insulin_resistance >= 0.6:
+        recomendaciones.append("🔴 ALTA RESISTENCIA A LA INSULINA: Reduce carbohidratos a menos de 100g/día. Evita alimentos procesados y bebidas azucaradas. Incorpora ejercicio de fuerza 3 veces por semana. Considera suplementación con magnesio y omega-3 (consulta a tu médico).")
+    elif insulin_resistance >= 0.3:
+        recomendaciones.append("🟡 RESISTENCIA A LA INSULINA MODERADA: Reemplaza granos refinados por integrales. Aumenta consumo de ácidos grasos omega-3 (pescado, nueces, semillas de chía). Realiza ejercicio mixto (cardio + pesas) al menos 4 veces por semana.")
+    else:
+        recomendaciones.append("🟢 SENSIBILIDAD A LA INSULINA NORMAL: Continúa con tu estilo de vida activo. Mantén un peso saludable y evita el sedentarismo prolongado.")
+
+    if hypertension >= 0.6:
+        recomendaciones.append("🔴 ALTO RIESGO DE HIPERTENSIÓN: Reduce el sodio a menos de 1500mg/día. Elimina alimentos ultraprocesados, embutidos y enlatados. Incrementa consumo de potasio (plátano, espinaca, aguacate). Mide tu presión arterial diariamente y consulta a un cardiólogo.")
+    elif hypertension >= 0.3:
+        recomendaciones.append("🟡 RIESGO MODERADO DE HIPERTENSIÓN: Reduce el consumo de sal y alimentos procesados. Aumenta el potasio natural con frutas y verduras. Practica técnicas de relajación (meditación, respiración profunda) para reducir el estrés. Camina 30 min diarios.")
+    else:
+        recomendaciones.append("🟢 PRESIÓN ARTERIAL BAJO CONTROL: Sigue con tu dieta balanceada baja en sodio. Mantén la actividad física regular y chequeos periódicos.")
+
+    recomendaciones.append("💡 RECOMENDACIÓN GENERAL: Bebe al menos 2 litros de agua al día. Duerme 7-8 horas diarias. Evita el tabaco y el alcohol en exceso. Realiza ejercicio físico al menos 150 minutos por semana.")
+
+    return "\n\n".join(recomendaciones)
 
 
 def calcular_riesgo(registro):
@@ -362,9 +396,10 @@ def dashboard():
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     placeholder = db_placeholder(conn)
+                    recomendaciones = generar_recomendaciones(ia_result['prediabetes'], ia_result['insulin_resistance'], ia_result['hypertension'])
                     cursor.execute(
-                        f'INSERT INTO analisis_ia (id_usuario, filename, prediabetes, insulin_resistance, hypertension) VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})',
-                        (current_user['id'], filename, ia_result['prediabetes'], ia_result['insulin_resistance'], ia_result['hypertension'])
+                        f'INSERT INTO analisis_ia (id_usuario, filename, prediabetes, insulin_resistance, hypertension, recomendaciones) VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder})',
+                        (current_user['id'], filename, ia_result['prediabetes'], ia_result['insulin_resistance'], ia_result['hypertension'], recomendaciones)
                     )
                     conn.commit()
                     cursor.close()
@@ -426,10 +461,12 @@ def dashboard():
     analisis_list = cursor.fetchall()
     if is_sqlite_connection(conn):
         analisis_list = [dict(row) for row in analisis_list]
+    ultimo_recomendacion = analisis_list[0].get('recomendaciones') if analisis_list else None
+    ultimo_analisis = analisis_list[0] if analisis_list else None
     cursor.close()
     conn.close()
 
-    return render_template('dashboard.html', title='Dashboard', current_user=current_user, analisis_list=analisis_list)
+    return render_template('dashboard.html', title='Dashboard', current_user=current_user, analisis_list=analisis_list, ultimo_recomendacion=ultimo_recomendacion, ultimo_analisis=ultimo_analisis)
 
 
 @app.route('/upload')
