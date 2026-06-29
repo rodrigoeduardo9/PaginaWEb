@@ -4,5 +4,4 @@ __pycache__/
 venv/
 *.sqlite3
 static/uploads/
-*.pth
 mysql_data/
