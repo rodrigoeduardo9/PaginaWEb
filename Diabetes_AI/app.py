@@ -32,8 +32,14 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp'}
 
 ACANTOSIS_MODEL_PATH = os.path.join(os.path.dirname(__file__), 'modelo_acantosis.keras')
 ACANTOSIS_CLASS_PATH = os.path.join(os.path.dirname(__file__), 'class_names.json')
-ACANTOSIS_CLASS_NAMES = json.load(open(ACANTOSIS_CLASS_PATH)) if os.path.exists(ACANTOSIS_CLASS_PATH) else []
 _acantosis_model = None
+_acantosis_class_names = []
+
+try:
+    if os.path.exists(ACANTOSIS_CLASS_PATH):
+        _acantosis_class_names = json.load(open(ACANTOSIS_CLASS_PATH))
+except Exception as e:
+    print('Error loading class names:', e)
 
 
 def get_acantosis_model():
@@ -41,6 +47,7 @@ def get_acantosis_model():
     if _acantosis_model is None and os.path.exists(ACANTOSIS_MODEL_PATH):
         try:
             _acantosis_model = keras.models.load_model(ACANTOSIS_MODEL_PATH)
+            _acantosis_model.eval()
         except Exception as e:
             print('Error loading acantosis model:', e)
             _acantosis_model = None
@@ -357,7 +364,7 @@ def dashboard():
                         logits_t = logits if isinstance(logits, torch.Tensor) else torch.tensor(logits)
                         probs = torch.softmax(logits_t, dim=1).numpy()[0]
                     idx = int(np.argmax(probs))
-                    clase = ACANTOSIS_CLASS_NAMES[idx] if idx < len(ACANTOSIS_CLASS_NAMES) else f'Class_{idx}'
+                    clase = _acantosis_class_names[idx] if idx < len(_acantosis_class_names) else f'Class_{idx}'
                     confianza = float(probs[idx])
                     rec_piel = generar_recomendaciones_piel(clase, confianza)
 
