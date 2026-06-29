@@ -5,3 +5,4 @@ venv/
 *.sqlite3
 static/uploads/
 mysql_data/
+/model.pth
