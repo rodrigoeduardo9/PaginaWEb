@@ -9,9 +9,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import mysql.connector
 
-os.environ['KERAS_BACKEND'] = 'torch'
 import torch
-import keras
 from PIL import Image
 
 app = Flask(__name__)
@@ -30,7 +28,7 @@ SQLITE_DB_PATH = os.path.join(os.path.dirname(__file__), 'bd_salud.sqlite3')
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp'}
 
-ACANTOSIS_MODEL_PATH = os.path.join(os.path.dirname(__file__), 'modelo_acantosis.keras')
+ACANTOSIS_MODEL_PATH = os.path.join(os.path.dirname(__file__), 'modelo_acantosis_traced.pt')
 ACANTOSIS_CLASS_PATH = os.path.join(os.path.dirname(__file__), 'class_names.json')
 _acantosis_model = None
 _acantosis_class_names = []
@@ -46,7 +44,7 @@ def get_acantosis_model():
     global _acantosis_model
     if _acantosis_model is None and os.path.exists(ACANTOSIS_MODEL_PATH):
         try:
-            _acantosis_model = keras.models.load_model(ACANTOSIS_MODEL_PATH)
+            _acantosis_model = torch.jit.load(ACANTOSIS_MODEL_PATH)
             _acantosis_model.eval()
         except Exception as e:
             print('Error loading acantosis model:', e)
@@ -365,9 +363,8 @@ def dashboard():
                 try:
                     x = preprocess_skin_image(os.path.join(UPLOAD_FOLDER, filename))
                     with torch.no_grad():
-                        logits = model(x, training=False)
-                        logits_t = logits if isinstance(logits, torch.Tensor) else torch.tensor(logits)
-                        probs = torch.softmax(logits_t, dim=1).numpy()[0]
+                        logits = model(x)
+                        probs = torch.softmax(logits, dim=1).numpy()[0]
                     idx = int(np.argmax(probs))
                     clase = _acantosis_class_names[idx] if idx < len(_acantosis_class_names) else f'Class_{idx}'
                     confianza = float(probs[idx])
