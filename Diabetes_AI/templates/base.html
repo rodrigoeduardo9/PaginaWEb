@@ -15,6 +15,7 @@
       <nav>
         {% if current_user %}
           <a href="{{ url_for('dashboard') }}">Dashboard</a>
+          <a href="{{ url_for('configuracion') }}">Configuración</a>
           <span class="nav-user">{{ current_user.nombre }}</span>
           <a href="{{ url_for('logout') }}">Cerrar sesión</a>
         {% else %}

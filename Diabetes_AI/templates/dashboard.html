@@ -73,20 +73,7 @@
     </form>
   </section>
 
-  <section class="card" id="settings">
-    <h3>🔐 Configuración de cuenta</h3>
-    <p>Cambia tu contraseña.</p>
-    <form action="" method="post" class="form-card">
-      <input type="hidden" name="form_type" value="settings">
-      <label for="current_password">Contraseña actual</label>
-      <input type="password" id="current_password" name="current_password" required>
-      <label for="new_password">Nueva contraseña</label>
-      <input type="password" id="new_password" name="new_password" required>
-      <label for="confirm_password">Confirmar nueva contraseña</label>
-      <input type="password" id="confirm_password" name="confirm_password" required>
-      <button type="submit" class="button danger">🔑 Actualizar contraseña</button>
-    </form>
-  </section>
+
 </div>
 
 <section class="card">
@@ -148,5 +135,5 @@
 </section>
 {% endif %}
 
-<a class="gear-button" href="#settings" title="Configuración">⚙</a>
+
 {% endblock %}

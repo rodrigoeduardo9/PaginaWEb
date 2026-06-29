@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero">
+  <h2>🔐 Configuración de cuenta</h2>
+  <p>Actualiza tu contraseña y gestiona la seguridad de tu cuenta.</p>
+</section>
+
+<div class="dashboard-grid">
+  <section class="card">
+    <h3>👤 Información de la cuenta</h3>
+    <p><strong>Nombre:</strong> {{ current_user.nombre }}</p>
+    <p><strong>Correo:</strong> {{ current_user.correo }}</p>
+  </section>
+
+  <section class="card">
+    <h3>🔑 Cambiar contraseña</h3>
+    <form action="" method="post" class="form-card">
+      <label for="current_password">Contraseña actual</label>
+      <input type="password" id="current_password" name="current_password" required>
+      <label for="new_password">Nueva contraseña</label>
+      <input type="password" id="new_password" name="new_password" required>
+      <label for="confirm_password">Confirmar nueva contraseña</label>
+      <input type="password" id="confirm_password" name="confirm_password" required>
+      <button type="submit" class="button danger">🔑 Actualizar contraseña</button>
+    </form>
+  </section>
+</div>
+
+<p style="text-align: center; margin-top: 1rem;">
+  <a href="{{ url_for('dashboard') }}" class="button">← Volver al Dashboard</a>
+</p>
+{% endblock %}

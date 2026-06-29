@@ -389,40 +389,7 @@ def dashboard():
                 flash('No se encontr\u00f3 el modelo (modelo_acantosis.keras).', 'info')
             return redirect(url_for('dashboard'))
 
-        if form_type == 'settings':
-            current_password = request.form['current_password']
-            new_password = request.form['new_password']
-            confirm_password = request.form['confirm_password']
-            if not current_password or not new_password or not confirm_password:
-                flash('Completa todos los campos de contrase\u00f1a.', 'error')
-                return redirect(url_for('dashboard'))
-            if new_password != confirm_password:
-                flash('La nueva contrase\u00f1a y la confirmaci\u00f3n no coinciden.', 'error')
-                return redirect(url_for('dashboard'))
-            conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True) if not is_sqlite_connection(conn) else conn.cursor()
-            placeholder = db_placeholder(conn)
-            cursor.execute(
-                f'SELECT password FROM usuarios WHERE id_usuario = {placeholder}',
-                (current_user['id'],),
-            )
-            user = cursor.fetchone()
-            stored_password = user['password']
-            if not stored_password or not check_password_hash(stored_password, current_password):
-                flash('Contrase\u00f1a actual incorrecta.', 'error')
-                cursor.close()
-                conn.close()
-                return redirect(url_for('dashboard'))
-            hashed_password = generate_password_hash(new_password)
-            cursor.execute(
-                f'UPDATE usuarios SET password = {placeholder} WHERE id_usuario = {placeholder}',
-                (hashed_password, current_user['id']),
-            )
-            conn.commit()
-            cursor.close()
-            conn.close()
-            flash('Contrase\u00f1a actualizada correctamente.', 'success')
-            return redirect(url_for('dashboard'))
+
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True) if not is_sqlite_connection(conn) else conn.cursor()
@@ -446,6 +413,47 @@ def dashboard():
         ultimo_recomendacion=ultimo_recomendacion,
         ultimo_analisis=ultimo_analisis,
     )
+
+
+@app.route('/configuracion', methods=['GET', 'POST'])
+@login_required
+def configuracion():
+    current_user = get_current_user()
+    if request.method == 'POST':
+        current_password = request.form['current_password']
+        new_password = request.form['new_password']
+        confirm_password = request.form['confirm_password']
+        if not current_password or not new_password or not confirm_password:
+            flash('Completa todos los campos de contrase\u00f1a.', 'error')
+            return redirect(url_for('configuracion'))
+        if new_password != confirm_password:
+            flash('La nueva contrase\u00f1a y la confirmaci\u00f3n no coinciden.', 'error')
+            return redirect(url_for('configuracion'))
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True) if not is_sqlite_connection(conn) else conn.cursor()
+        placeholder = db_placeholder(conn)
+        cursor.execute(
+            f'SELECT password FROM usuarios WHERE id_usuario = {placeholder}',
+            (current_user['id'],),
+        )
+        user = cursor.fetchone()
+        stored_password = user['password']
+        if not stored_password or not check_password_hash(stored_password, current_password):
+            flash('Contrase\u00f1a actual incorrecta.', 'error')
+            cursor.close()
+            conn.close()
+            return redirect(url_for('configuracion'))
+        hashed_password = generate_password_hash(new_password)
+        cursor.execute(
+            f'UPDATE usuarios SET password = {placeholder} WHERE id_usuario = {placeholder}',
+            (hashed_password, current_user['id']),
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        flash('Contrase\u00f1a actualizada correctamente.', 'success')
+        return redirect(url_for('configuracion'))
+    return render_template('settings.html', title='Configuraci\u00f3n de cuenta', current_user=current_user)
 
 
 # Preload model at startup to avoid timeout on first request
