@@ -577,14 +577,6 @@ def configuracion():
     return render_template('settings.html', title='Configuraci\u00f3n de cuenta', current_user=current_user)
 
 
-# Preload model at startup to avoid timeout on first request
-try:
-    get_acantosis_model()
-    app.logger.info('Acantosis model loaded at startup')
-except Exception as e:
-    app.logger.error('Error preloading acantosis model: %s', e)
-
-
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
