@@ -64,9 +64,6 @@ def generar_recomendacion_combinada(clase, confianza, salud=None):
     if not salud:
         return rec_piel, None
 
-    salud_recs = []
-    riesgos = 0
-
     peso = float(salud['peso_kg'])
     altura = float(salud['altura_cm'])
     imc = round(peso / ((altura / 100) ** 2), 2)
@@ -75,6 +72,26 @@ def generar_recomendacion_combinada(clase, confianza, salud=None):
     azucares = int(salud['consumo_azucares'])
     harinas = int(salud['consumo_harinas'])
     ojos_rojos = salud['ojos_rojos']
+
+    riesgo_imagen = 2 if clase == 'Acanthosis_Nigricans' else 1 if clase in ('CRP', 'TFFD') else 0
+    riesgo_salud = 0
+    if imc >= 30:
+        riesgo_salud += 2
+    elif imc >= 25:
+        riesgo_salud += 1
+    if glucosa >= 126:
+        riesgo_salud += 2
+    elif glucosa >= 100:
+        riesgo_salud += 1
+    if edad >= 45:
+        riesgo_salud += 1
+    if ojos_rojos.lower() == 's\u00ed':
+        riesgo_salud += 1
+    if (azucares + harinas) >= 8:
+        riesgo_salud += 1
+
+    salud_recs = []
+    riesgos = 0
 
     if imc >= 30:
         salud_recs.append("🔴 Tu IMC indica obesidad. Esto aumenta el riesgo de resistencia a la insulina y diabetes.")
@@ -116,6 +133,23 @@ def generar_recomendacion_combinada(clase, confianza, salud=None):
         riesgos += 2
     elif clase == 'CRP' or clase == 'TFFD':
         riesgos += 1
+
+    if riesgo_salud <= 1 and riesgo_imagen >= 2:
+        salud_recs.append(
+            "\n⚠️ **POSIBLE DISCREPANCIA:** La imagen sugiere un marcador de riesgo metab\u00f3lico, "
+            "pero tus datos de salud registrados son normales o de bajo riesgo. "
+            "Esto podr\u00eda indicar que el an\u00e1lisis de piel est\u00e1 detectando se\u00f1ales tempranas "
+            "que a\u00fan no se reflejan en tus m\u00e9tricas actuales. "
+            "Te recomendamos monitoreo regular y una consulta m\u00e9dica para estudios m\u00e1s espec\u00edficos."
+        )
+    elif riesgo_salud >= 4 and riesgo_imagen == 0:
+        salud_recs.append(
+            "\n⚠️ **POSIBLE DISCREPANCIA:** Tu piel se ve saludable seg\u00fan el an\u00e1lisis, "
+            "pero tus datos de salud indican un riesgo metab\u00f3lico significativo. "
+            "Es posible que tengas una condici\u00f3n en etapa temprana que a\u00fan no se manifiesta en la piel. "
+            "Te recomendamos consultar a un m\u00e9dico para estudios adicionales "
+            "(curva de tolerancia a la glucosa, perfil lip\u00eddico)."
+        )
 
     if riesgos >= 5:
         salud_recs.append("\n🔴 RIESGO GLOBAL ALTO: Combinaci\u00f3n de m\u00faltiples factores. Busca atenci\u00f3n m\u00e9dica pronto.")
