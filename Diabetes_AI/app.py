@@ -199,6 +199,12 @@ def is_pg_connection(conn):
     return isinstance(conn, psycopg2.extensions.connection)
 
 
+def get_cursor(conn):
+    if is_pg_connection(conn):
+        return conn.cursor()
+    return conn.cursor(dictionary=True) if not is_sqlite_connection(conn) else conn.cursor()
+
+
 def pg_connection():
     conn = psycopg2.connect(os.getenv('DATABASE_URL'), sslmode='require', cursor_factory=psycopg2.extras.RealDictCursor)
     conn.autocommit = False
@@ -435,7 +441,7 @@ def login():
         correo = request.form['correo']
         password = request.form['password']
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True) if not is_sqlite_connection(conn) else conn.cursor()
+        cursor = get_cursor(conn)
         placeholder = db_placeholder(conn)
         cursor.execute(
             f'SELECT id_usuario, nombre_completo, correo, password FROM usuarios WHERE correo = {placeholder}',
@@ -539,7 +545,7 @@ def dashboard():
                     confianza = float(probs[idx])
 
                     conn = get_db_connection()
-                    cursor = conn.cursor(dictionary=True) if not is_sqlite_connection(conn) else conn.cursor()
+                    cursor = get_cursor(conn)
                     placeholder = db_placeholder(conn)
                     cursor.execute(
                         f'SELECT * FROM registros_salud WHERE id_usuario = {placeholder} ORDER BY fecha_formulario DESC LIMIT 1',
@@ -569,11 +575,11 @@ def dashboard():
 
 
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True) if not is_sqlite_connection(conn) else conn.cursor()
+    cursor = get_cursor(conn)
     placeholder = db_placeholder(conn)
     cursor.execute(
-        f'SELECT * FROM analisis_piel WHERE id_usuario = {placeholder} ORDER BY fecha_analisis DESC LIMIT 5',
-        (current_user['id'],)
+        f'SELECT * FROM analisis_piel WHERE id_usuario = {placeholder} ORDER BY fecha_analisis DESC LIMIT 1',
+        (user_id,),
     )
     piel_list = cursor.fetchall()
     if is_sqlite_connection(conn):
@@ -617,11 +623,11 @@ def configuracion():
             flash('La nueva contrase\u00f1a y la confirmaci\u00f3n no coinciden.', 'error')
             return redirect(url_for('configuracion'))
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True) if not is_sqlite_connection(conn) else conn.cursor()
+        cursor = get_cursor(conn)
         placeholder = db_placeholder(conn)
         cursor.execute(
-            f'SELECT password FROM usuarios WHERE id_usuario = {placeholder}',
-            (current_user['id'],),
+            f'SELECT id_usuario, nombre_completo, correo, password FROM usuarios WHERE correo = {placeholder} AND id_usuario = {placeholder}',
+            (correo, current_user['id']),
         )
         user = cursor.fetchone()
         stored_password = user['password']
