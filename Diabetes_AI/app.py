@@ -579,7 +579,7 @@ def dashboard():
     placeholder = db_placeholder(conn)
     cursor.execute(
         f'SELECT * FROM analisis_piel WHERE id_usuario = {placeholder} ORDER BY fecha_analisis DESC LIMIT 1',
-        (user_id,),
+        (current_user['id'],),
     )
     piel_list = cursor.fetchall()
     if is_sqlite_connection(conn):
