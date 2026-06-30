@@ -8,6 +8,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import mysql.connector
+import psycopg2
+import psycopg2.extras
 
 import torch
 from PIL import Image
@@ -193,6 +195,16 @@ def is_sqlite_connection(conn):
     return isinstance(conn, sqlite3.Connection)
 
 
+def is_pg_connection(conn):
+    return isinstance(conn, psycopg2.extensions.connection)
+
+
+def pg_connection():
+    conn = psycopg2.connect(os.getenv('DATABASE_URL'), sslmode='require', cursor_factory=psycopg2.extras.RealDictCursor)
+    conn.autocommit = False
+    return conn
+
+
 def sqlite_connection():
     conn = sqlite3.connect(SQLITE_DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -274,7 +286,61 @@ def ensure_mysql_user_schema(conn):
         cursor.close()
 
 
+def init_pg_db():
+    conn = pg_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        '''CREATE TABLE IF NOT EXISTS usuarios (
+            id_usuario SERIAL PRIMARY KEY,
+            nombre_completo TEXT NOT NULL,
+            correo TEXT NOT NULL UNIQUE,
+            password TEXT,
+            fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )'''
+    )
+    cursor.execute(
+        '''CREATE TABLE IF NOT EXISTS registros_salud (
+            id_registro SERIAL PRIMARY KEY,
+            id_usuario INTEGER NOT NULL,
+            fecha_formulario TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            peso_kg REAL NOT NULL,
+            altura_cm REAL NOT NULL,
+            edad INTEGER NOT NULL,
+            nivel_glucosa REAL NOT NULL,
+            ojos_rojos TEXT NOT NULL,
+            consumo_azucares INTEGER NOT NULL,
+            consumo_harinas INTEGER NOT NULL,
+            imc REAL NOT NULL,
+            FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario) ON DELETE CASCADE
+        )'''
+    )
+    cursor.execute(
+        '''CREATE TABLE IF NOT EXISTS analisis_piel (
+            id_analisis SERIAL PRIMARY KEY,
+            id_usuario INTEGER NOT NULL,
+            filename TEXT NOT NULL,
+            clase_detectada TEXT,
+            confianza REAL,
+            recomendaciones TEXT,
+            fecha_analisis TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (id_usuario) REFERENCES usuarios (id_usuario) ON DELETE CASCADE
+        )'''
+    )
+    cursor.execute('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT')
+    conn.commit()
+    cursor.close()
+    return conn
+
+
 def get_db_connection():
+    pg_url = os.getenv('DATABASE_URL')
+    if pg_url:
+        try:
+            conn = pg_connection()
+            init_pg_db()
+            return conn
+        except psycopg2.Error as err:
+            print('PostgreSQL no disponible, intentando MySQL/SQLite:', err)
     if DB_TYPE == 'sqlite':
         init_sqlite_db()
         return sqlite_connection()
@@ -350,7 +416,7 @@ def registrar():
                 (nombre, correo, hashed_password),
             )
             conn.commit()
-        except (sqlite3.IntegrityError, mysql.connector.Error):
+        except (sqlite3.IntegrityError, mysql.connector.Error, psycopg2.Error):
             conn.rollback()
             flash('El correo ya est\u00e1 registrado, usa otro correo.', 'error')
             cursor.close()
