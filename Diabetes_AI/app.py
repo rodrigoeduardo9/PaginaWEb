@@ -627,7 +627,7 @@ def configuracion():
         placeholder = db_placeholder(conn)
         cursor.execute(
             f'SELECT id_usuario, nombre_completo, correo, password FROM usuarios WHERE correo = {placeholder} AND id_usuario = {placeholder}',
-            (correo, current_user['id']),
+            (current_user['correo'], current_user['id']),
         )
         user = cursor.fetchone()
         stored_password = user['password']
