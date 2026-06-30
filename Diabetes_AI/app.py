@@ -292,8 +292,9 @@ def ensure_mysql_user_schema(conn):
         cursor.close()
 
 
-def init_pg_db():
-    conn = pg_connection()
+def init_pg_db(conn=None):
+    if conn is None:
+        conn = pg_connection()
     cursor = conn.cursor()
     cursor.execute(
         '''CREATE TABLE IF NOT EXISTS usuarios (
@@ -335,7 +336,6 @@ def init_pg_db():
     cursor.execute('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT')
     conn.commit()
     cursor.close()
-    return conn
 
 
 def get_db_connection():
@@ -343,7 +343,7 @@ def get_db_connection():
     if pg_url:
         try:
             conn = pg_connection()
-            init_pg_db()
+            init_pg_db(conn)
             return conn
         except psycopg2.Error as err:
             print('PostgreSQL no disponible, intentando MySQL/SQLite:', err)
@@ -414,7 +414,7 @@ def registrar():
             return render_template('register.html', title='Registro de usuario')
         hashed_password = generate_password_hash(password)
         conn = get_db_connection()
-        cursor = conn.cursor() if is_sqlite_connection(conn) else conn.cursor()
+        cursor = get_cursor(conn)
         placeholder = db_placeholder(conn)
         try:
             cursor.execute(
@@ -493,7 +493,7 @@ def dashboard():
             }
             registro['imc'] = round(float(registro['peso_kg']) / ((float(registro['altura_cm']) / 100) ** 2), 2)
             conn = get_db_connection()
-            cursor = conn.cursor()
+            cursor = get_cursor(conn)
             sql = '''INSERT INTO registros_salud
                 (id_usuario, peso_kg, altura_cm, edad, nivel_glucosa, ojos_rojos, consumo_azucares, consumo_harinas, imc)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'''
