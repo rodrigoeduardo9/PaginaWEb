@@ -504,12 +504,12 @@ def dashboard():
             )
             if not is_sqlite_connection(conn):
                 sql = '''INSERT INTO registros_salud
-                    (id_usuario, peso_kg, altura_cm, edad, nivel_glucosa, ojos_rojos, consumo_azucares, consumo_harinas)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'''
+                    (id_usuario, peso_kg, altura_cm, edad, nivel_glucosa, ojos_rojos, consumo_azucares, consumo_harinas, imc)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)'''
                 vals = (
                     registro['id_usuario'], registro['peso_kg'], registro['altura_cm'],
                     registro['edad'], registro['nivel_glucosa'], registro['ojos_rojos'],
-                    registro['consumo_azucares'], registro['consumo_harinas'],
+                    registro['consumo_azucares'], registro['consumo_harinas'], registro['imc'],
                 )
             cursor.execute(sql, vals)
             conn.commit()
